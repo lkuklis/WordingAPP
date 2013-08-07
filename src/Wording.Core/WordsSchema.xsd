@@ -1,0 +1,19 @@
+﻿<xs:schema id="WordsDataSet" targetNamespace="http://tempuri.org/WordsDataSet.xsd" xmlns:mstns="http://tempuri.org/WordsDataSet.xsd" xmlns="http://tempuri.org/WordsDataSet.xsd" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata" attributeFormDefault="qualified" elementFormDefault="qualified">
+    <xs:element name="WordsDataSet" msdata:IsDataSet="true" msdata:MainDataTable="http_x003A__x002F__x002F_tempuri.org_x002F_WordsDataSet.xsd_x003A_Word" msdata:UseCurrentLocale="true">
+        <xs:complexType>
+            <xs:choice minOccurs="0" maxOccurs="unbounded">
+                <xs:element name="Word">
+                    <xs:complexType>
+                        <xs:attribute name="Id" form="unqualified" msdata:AutoIncrement="true" msdata:AutoIncrementSeed="-1" msdata:AutoIncrementStep="-1" type="xs:int" use="required" />
+                        <xs:attribute name="Original" form="unqualified" type="xs:string" />
+                        <xs:attribute name="Translated" form="unqualified" type="xs:string" />
+                    </xs:complexType>
+                </xs:element>
+            </xs:choice>
+        </xs:complexType>
+        <xs:unique name="WordKey1" msdata:PrimaryKey="true">
+            <xs:selector xpath=".//mstns:Word" />
+            <xs:field xpath="@Id" />
+        </xs:unique>
+    </xs:element>
+</xs:schema>

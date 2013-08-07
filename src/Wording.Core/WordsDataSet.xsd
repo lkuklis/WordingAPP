@@ -1,0 +1,31 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema id="WordsDataSet" targetNamespace="http://tempuri.org/WordsDataSet.xsd" xmlns:mstns="http://tempuri.org/WordsDataSet.xsd" xmlns="http://tempuri.org/WordsDataSet.xsd" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata" xmlns:msprop="urn:schemas-microsoft-com:xml-msprop" attributeFormDefault="qualified" elementFormDefault="qualified">
+  <xs:annotation>
+    <xs:appinfo source="urn:schemas-microsoft-com:xml-msdatasource">
+      <DataSource DefaultConnectionIndex="0" FunctionsComponentName="QueriesTableAdapter" Modifier="AutoLayout, AnsiClass, Class, Public" SchemaSerializationMode="ExcludeSchema" xmlns="urn:schemas-microsoft-com:xml-msdatasource">
+        <Connections />
+        <Tables />
+        <Sources />
+      </DataSource>
+    </xs:appinfo>
+  </xs:annotation>
+  <xs:element name="WordsDataSet" msdata:IsDataSet="true" msdata:UseCurrentLocale="true" msprop:EnableTableAdapterManager="true" msprop:Generator_DataSetName="WordsDataSet" msprop:Generator_UserDSName="WordsDataSet">
+    <xs:complexType>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="Word" msprop:Generator_TableClassName="WordDataTable" msprop:Generator_TableVarName="tableWord" msprop:Generator_RowChangedName="WordRowChanged" msprop:Generator_TablePropName="Word" msprop:Generator_RowDeletingName="WordRowDeleting" msprop:Generator_RowChangingName="WordRowChanging" msprop:Generator_RowEvHandlerName="WordRowChangeEventHandler" msprop:Generator_RowDeletedName="WordRowDeleted" msprop:Generator_RowClassName="WordRow" msprop:Generator_UserTableName="Word" msprop:Generator_RowEvArgName="WordRowChangeEvent">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="Id" msdata:AutoIncrement="true" msdata:AutoIncrementSeed="-1" msdata:AutoIncrementStep="-1" msprop:Generator_ColumnVarNameInTable="columnId" msprop:Generator_ColumnPropNameInRow="Id" msprop:Generator_ColumnPropNameInTable="IdColumn" msprop:Generator_UserColumnName="Id" type="xs:int" />
+              <xs:element name="Original" msprop:Generator_ColumnVarNameInTable="columnOriginal" msprop:Generator_ColumnPropNameInRow="Original" msprop:Generator_ColumnPropNameInTable="OriginalColumn" msprop:Generator_UserColumnName="Original" type="xs:string" minOccurs="0" />
+              <xs:element name="Translated" msprop:Generator_ColumnVarNameInTable="columnTranslated" msprop:Generator_ColumnPropNameInRow="Translated" msprop:Generator_ColumnPropNameInTable="TranslatedColumn" msprop:Generator_UserColumnName="Translated" type="xs:string" minOccurs="0" />
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+      </xs:choice>
+    </xs:complexType>
+    <xs:unique name="WordKey1" msdata:PrimaryKey="true">
+      <xs:selector xpath=".//mstns:Word" />
+      <xs:field xpath="mstns:Id" />
+    </xs:unique>
+  </xs:element>
+</xs:schema>

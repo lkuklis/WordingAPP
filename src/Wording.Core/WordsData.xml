@@ -1,0 +1,193 @@
+﻿<?xml version="1.0" standalone="yes"?>
+<WordsDataSet xmlns="http://tempuri.org/WordsDataSet.xsd">
+    <Word>
+        <Id>-1</Id>
+        <Original>scope</Original>
+        <Translated>zakres</Translated>
+    </Word>
+    <Word>
+        <Id>-2</Id>
+        <Original>cater</Original>
+        <Translated>zaspokoic</Translated>
+    </Word>
+    <Word>
+        <Id>-3</Id>
+        <Original>as its name implies</Original>
+        <Translated>jak sama nazwa wskazuje</Translated>
+    </Word>
+    <Word>
+        <Id>-4</Id>
+        <Original>implicitly</Original>
+        <Translated>domyślnie, bezwzględnie, bez zastrzeżeń</Translated>
+    </Word>
+    <Word>
+        <Id>-5</Id>
+        <Original>efficient</Original>
+        <Translated>wydajny</Translated>
+    </Word>
+    <Word>
+        <Id>-7</Id>
+        <Original>suppress</Original>
+        <Translated>tłumić / przyciszyć / kryć, zatajać</Translated>
+    </Word>
+    <Word>
+        <Id>-8</Id>
+        <Original>nimble</Original>
+        <Translated>zwinny, zwrtony, gibki</Translated>
+    </Word>
+    <Word>
+        <Id>-9</Id>
+        <Original>unobtrusive</Original>
+        <Translated>nierzucający się w oczy, nieprzyciągający uwagi, dyskretny, skromny</Translated>
+    </Word>
+    <Word>
+        <Id>-10</Id>
+        <Original>inferred</Original>
+        <Translated>wywnioskowany</Translated>
+    </Word>
+    <Word>
+        <Id>-11</Id>
+        <Original>groom</Original>
+        <Translated>czyscic / pan mlody / obrzdzac</Translated>
+    </Word>
+    <Word>
+        <Id>-12</Id>
+        <Original>sufficient</Original>
+        <Translated>wystarczajacy</Translated>
+    </Word>
+    <Word>
+        <Id>-13</Id>
+        <Original>intercept</Original>
+        <Translated>przejmować, przechwytywać</Translated>
+    </Word>
+    <Word>
+        <Id>-14</Id>
+        <Original>preserve</Original>
+        <Translated>zachowywać, przechowywać, konserwować, chronić, strzec, ochraniać, ratować, zabezpieczać;</Translated>
+    </Word>
+    <Word>
+        <Id>-15</Id>
+        <Original>deferred</Original>
+        <Translated>odroczony, opozniony</Translated>
+    </Word>
+    <Word>
+        <Id>-16</Id>
+        <Original>persist</Original>
+        <Translated>upierać się, nie ustępować, utrzymywać</Translated>
+    </Word>
+    <Word>
+        <Id>-17</Id>
+        <Original>factor</Original>
+        <Translated>czynnik, mnożnik</Translated>
+    </Word>
+    <Word>
+        <Id>-18</Id>
+        <Original>consistency</Original>
+        <Translated>zgodność, konsekwencja, logiczność</Translated>
+    </Word>
+    <Word>
+        <Id>-19</Id>
+        <Original>durability</Original>
+        <Translated>twałość, moc, stałosć, wytrzymałość</Translated>
+    </Word>
+    <Word>
+        <Id>-20</Id>
+        <Original>circumstances</Original>
+        <Translated>okoliczności</Translated>
+    </Word>
+    <Word>
+        <Id>-21</Id>
+        <Original>accuracy</Original>
+        <Translated>celność, trafność, dokładność, precyzyjność</Translated>
+    </Word>
+    <Word>
+        <Id>-22</Id>
+        <Original>predicate</Original>
+        <Translated>orzeczenie, orzekać, twierdzić</Translated>
+    </Word>
+    <Word>
+        <Id>-23</Id>
+        <Original>evaluate</Original>
+        <Translated>oceniac, oszacować</Translated>
+    </Word>
+    <Word>
+        <Id>-24</Id>
+        <Original>entity</Original>
+        <Translated>jednostka, istota</Translated>
+    </Word>
+    <Word>
+        <Id>-25</Id>
+        <Original>adorn</Original>
+        <Translated>zdobić, upiększać</Translated>
+    </Word>
+    <Word>
+        <Id>-26</Id>
+        <Original>explicit</Original>
+        <Translated>bezpośredni, szczery, jasno postawiony, wyraźny</Translated>
+    </Word>
+    <Word>
+        <Id>-27</Id>
+        <Original>spatial</Original>
+        <Translated>przestrzenny</Translated>
+    </Word>
+    <Word>
+        <Id>-28</Id>
+        <Original>sloth</Original>
+        <Translated>lenistwo, ospałość, leniwiec,</Translated>
+    </Word>
+    <Word>
+        <Id>-29</Id>
+        <Original>obstacle</Original>
+        <Translated>przeszkoda, bariera</Translated>
+    </Word>
+    <Word>
+        <Id>-30</Id>
+        <Original>slightly</Original>
+        <Translated>nieznacznie, nieco</Translated>
+    </Word>
+    <Word>
+        <Id>-32</Id>
+        <Original>derived</Original>
+        <Translated>pochodny, wyliczany, wyprowadzany</Translated>
+    </Word>
+    <Word>
+        <Id>-33</Id>
+        <Original>implicit</Original>
+        <Translated>domniemany</Translated>
+    </Word>
+    <Word>
+        <Id>-34</Id>
+        <Original>scald</Original>
+        <Translated>poparzenie, oparzyc sie</Translated>
+    </Word>
+    <Word>
+        <Id>-35</Id>
+        <Original>amend</Original>
+        <Translated>poprawiać, wnosić poprawki</Translated>
+    </Word>
+    <Word>
+        <Id>-36</Id>
+        <Original>ancestor</Original>
+        <Translated>przodek</Translated>
+    </Word>
+    <Word>
+        <Id>-37</Id>
+        <Original>descendant</Original>
+        <Translated>potomek</Translated>
+    </Word>
+    <Word>
+        <Id>-38</Id>
+        <Original>sibling</Original>
+        <Translated>rodzenstwo</Translated>
+    </Word>
+    <Word>
+        <Id>-39</Id>
+        <Original>odd</Original>
+        <Translated>nieparzysty</Translated>
+    </Word>
+    <Word>
+        <Id>-40</Id>
+        <Original>even</Original>
+        <Translated>parzysty</Translated>
+    </Word>
+</WordsDataSet>
