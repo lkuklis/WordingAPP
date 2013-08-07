@@ -20,12 +20,7 @@ namespace Wording.WordApp
 
             _wp = new WordManager();
 
-            var bindingSource = new BindingSource { DataSource = _wp.GetWordsData() };
-            dataGridWords.AutoGenerateColumns = true;
-            dataGridWords.DataSource = bindingSource;
-
-            dataGridWords.AutoSizeRowsMode =
-                DataGridViewAutoSizeRowsMode.DisplayedCellsExceptHeaders;
+            RefreshAndBindDataSource();
 
             _notifyIcon1 = new NotifyIcon();
             _notifyIcon1.Click += notifyIcon1_Click;
@@ -42,9 +37,21 @@ namespace Wording.WordApp
             timer1.Start();
         }
 
+        private void RefreshAndBindDataSource()
+        {
+            var bindingSource = new BindingSource { DataSource = _wp.GetWordsData() };
+            dataGridWords.AutoGenerateColumns = true;
+            dataGridWords.DataSource = bindingSource;
+            dataGridWords.Columns[0].ReadOnly = true;
+
+            dataGridWords.AutoSizeRowsMode =
+                DataGridViewAutoSizeRowsMode.DisplayedCellsExceptHeaders;
+        }
+
         private void btnSaveWords_Click(object sender, EventArgs e)
         {
             _wp.Save();
+            // TODO: RefreshAndBindDataSource();
         }
 
         private void Form1_Resize(object sender, EventArgs e)
@@ -64,7 +71,7 @@ namespace Wording.WordApp
             }
         }
 
-        private List<int> lastNumbers2 = new List<int>();
+        private readonly List<int> _numberList = new List<int>();
 
         private int GetWordNumber(int randomId = 0)
         {
@@ -72,24 +79,24 @@ namespace Wording.WordApp
             {
                 randomId = new Random().Next(1, _words.Count());
             }
-            lastNumbers2.Capacity = 10;
-            int lastindex = lastNumbers2.Count > 0 ? lastNumbers2.IndexOf(lastNumbers2.Last()):0;
-            if (lastindex == lastNumbers2.Capacity - 1)
+            _numberList.Capacity = 10;
+            int lastindex = _numberList.Count > 0 ? _numberList.IndexOf(_numberList.Last()):0;
+            if (lastindex == _numberList.Capacity - 1)
             {
-                lastNumbers2.RemoveAt(0);
+                _numberList.RemoveAt(0);
             }
 
-            if (lastNumbers2.Contains(randomId))
+            if (_numberList.Contains(randomId))
             {
-                if (lastNumbers2.Count == lastNumbers2.Capacity && lastNumbers2.FindIndex(a => a == randomId) < 3)
+                if (_numberList.Count == _numberList.Capacity && _numberList.FindIndex(a => a == randomId) < 3)
                 {
-                    lastNumbers2.RemoveAt(lastNumbers2.FindIndex(a => a == randomId));
+                    _numberList.RemoveAt(_numberList.FindIndex(a => a == randomId));
                 }
 
                 return GetWordNumber(randomId+1);
             }
 
-            lastNumbers2.Add(randomId);
+            _numberList.Add(randomId);
             return randomId;
         }
 
