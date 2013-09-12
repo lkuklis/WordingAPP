@@ -33,7 +33,7 @@ namespace Wording.WordApp
             _notifyIcon1.Icon = Resources.Icon1;
             _notifyIcon1.Visible = true;
             int changeTime = Convert.ToInt32(System.Configuration.ConfigurationSettings.AppSettings["changeTime"]);
-            timer1.Interval = 1000*changeTime;
+            timer1.Interval = 1000 * changeTime;
             timer1.Start();
         }
 
@@ -50,8 +50,6 @@ namespace Wording.WordApp
 
         private void btnSaveWords_Click(object sender, EventArgs e)
         {
-            _wp.Save();
-            // TODO: RefreshAndBindDataSource();
         }
 
         private void Form1_Resize(object sender, EventArgs e)
@@ -80,7 +78,7 @@ namespace Wording.WordApp
                 randomId = new Random().Next(1, _words.Count());
             }
             _numberList.Capacity = 10;
-            int lastindex = _numberList.Count > 0 ? _numberList.IndexOf(_numberList.Last()):0;
+            int lastindex = _numberList.Count > 0 ? _numberList.IndexOf(_numberList.Last()) : 0;
             if (lastindex == _numberList.Capacity - 1)
             {
                 _numberList.RemoveAt(0);
@@ -93,11 +91,12 @@ namespace Wording.WordApp
                     _numberList.RemoveAt(_numberList.FindIndex(a => a == randomId));
                 }
 
-                return GetWordNumber(randomId+1);
+                return GetWordNumber(randomId + 1);
             }
 
             _numberList.Add(randomId);
             return randomId;
+
         }
 
         private void timer1_Tick(object sender, EventArgs e)
@@ -107,16 +106,35 @@ namespace Wording.WordApp
             {
                 randomId = 1;
             }
-            Word randomWord = _words.SingleOrDefault(w => w.Id * (-1) == randomId);
+            Word randomWord = _words.SingleOrDefault(w => w.Id == randomId);
             if (randomWord != null)
             {
-                _notifyIcon1.ShowBalloonTip(6000, randomWord.OrginalValue,
+                _notifyIcon1.ShowBalloonTip(6000, randomWord.OriginalValue,
                                             string.Format("{0}", randomWord.TranslationValue),
                                             ToolTipIcon.Info);
             }
             else
             {
                 timer1_Tick(this, null);
+            }
+        }
+
+        private void dataGridWords_CellValueChanged(object sender, DataGridViewCellEventArgs e)
+        {
+
+            
+            
+
+        }
+
+        private void btnAddNewWord_Click(object sender, EventArgs e)
+        {
+            var newWordForm = new NewWord();
+            var status = newWordForm.ShowDialog(this);
+            if (status == DialogResult.OK)
+            {
+                RefreshAndBindDataSource();
+                
             }
         }
     }

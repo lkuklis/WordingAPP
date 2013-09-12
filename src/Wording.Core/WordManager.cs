@@ -1,47 +1,44 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Linq;
-
-namespace Wording.Core
+﻿namespace Wording.Core
 {
+    using System.Collections.Generic;
+    using System.Data;
+    using System.Linq;
+
+    using Wording.Core.Repository;
+
     public class WordManager
     {
         public WordsDataSet WordDataSet;
 
+        private IRepository repository;
+
         public WordManager()
         {
-            WordDataSet = new WordsDataSet();
+            repository = new WordRepository();
         }
 
         public IEnumerable<Word> GetWords()
         {
-            return (from DataRow item in WordDataSet.Word.Rows
-                    select new Word
-                        {
-                            Id = Int32.Parse(item["Id"].ToString()), OrginalValue = item["Original"].ToString(), TranslationValue = item["Translated"].ToString()
-                        }).ToList();
+            return repository.GetAll();
         }
 
         public DataTable GetWordsData()
         {
-            var words = WordDataSet.Word;
-            words.ReadXml("WordsData.xml");
-            return words;
+            repository.RefreshData();
+            var words = repository.GetAll().ToList();
+            return words.ToDataTable();
         }
 
         public void AddWord(string original, string translated)
         {
-            var words = WordDataSet.Word;
-            var newWordRow = words.NewRow();
-            newWordRow["Original"] = original;
-            newWordRow["Translated"] = translated;
-            words.Rows.Add(newWordRow);
+            repository.AddWord(new Word
+                                   {
+                                       OriginalValue = original,
+                                       TranslationValue = translated
+                                   });
         }
-
-        public void Save()
-        {
-           this.WordDataSet.Word.WriteXml("WordsData.xml", XmlWriteMode.IgnoreSchema);
-        }
+       
     }
+
+
 }

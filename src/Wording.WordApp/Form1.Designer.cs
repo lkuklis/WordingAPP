@@ -29,7 +29,7 @@
         private void InitializeComponent()
         {
             this.dataGridWords = new System.Windows.Forms.DataGridView();
-            this.btnInitData = new System.Windows.Forms.Button();
+            this.btnAddNewWord = new System.Windows.Forms.Button();
             this.btnSaveWords = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.dataGridWords)).BeginInit();
             this.SuspendLayout();
@@ -41,15 +41,17 @@
             this.dataGridWords.Name = "dataGridWords";
             this.dataGridWords.Size = new System.Drawing.Size(524, 413);
             this.dataGridWords.TabIndex = 0;
+            this.dataGridWords.CellValueChanged += new System.Windows.Forms.DataGridViewCellEventHandler(this.dataGridWords_CellValueChanged);
             // 
-            // btnInitData
+            // btnAddNewWord
             // 
-            this.btnInitData.Location = new System.Drawing.Point(461, 431);
-            this.btnInitData.Name = "btnInitData";
-            this.btnInitData.Size = new System.Drawing.Size(75, 23);
-            this.btnInitData.TabIndex = 1;
-            this.btnInitData.Text = "Init";
-            this.btnInitData.UseVisualStyleBackColor = true;
+            this.btnAddNewWord.Location = new System.Drawing.Point(461, 431);
+            this.btnAddNewWord.Name = "btnAddNewWord";
+            this.btnAddNewWord.Size = new System.Drawing.Size(75, 23);
+            this.btnAddNewWord.TabIndex = 1;
+            this.btnAddNewWord.Text = "Add";
+            this.btnAddNewWord.UseVisualStyleBackColor = true;
+            this.btnAddNewWord.Click += new System.EventHandler(this.btnAddNewWord_Click);
             // 
             // btnSaveWords
             // 
@@ -67,7 +69,7 @@
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(548, 460);
             this.Controls.Add(this.btnSaveWords);
-            this.Controls.Add(this.btnInitData);
+            this.Controls.Add(this.btnAddNewWord);
             this.Controls.Add(this.dataGridWords);
             this.Name = "Form1";
             this.Text = "Form1";
@@ -82,7 +84,7 @@
         #endregion
 
         private System.Windows.Forms.DataGridView dataGridWords;
-        private System.Windows.Forms.Button btnInitData;
+        private System.Windows.Forms.Button btnAddNewWord;
         private System.Windows.Forms.Button btnSaveWords;
     }
 }
