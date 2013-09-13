@@ -137,5 +137,13 @@ namespace Wording.WordApp
                 
             }
         }
+
+   
+        private void dataGridWords_RowsRemoved(object sender, DataGridViewRowCancelEventArgs e)
+        {
+            int id = (int)e.Row.Cells[0].Value;
+            _wp.RemoveWord(id);
+            RefreshAndBindDataSource();
+        }
     }
 }

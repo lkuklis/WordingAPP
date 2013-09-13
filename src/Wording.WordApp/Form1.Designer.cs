@@ -42,6 +42,7 @@
             this.dataGridWords.Size = new System.Drawing.Size(524, 413);
             this.dataGridWords.TabIndex = 0;
             this.dataGridWords.CellValueChanged += new System.Windows.Forms.DataGridViewCellEventHandler(this.dataGridWords_CellValueChanged);
+            this.dataGridWords.UserDeletingRow += new System.Windows.Forms.DataGridViewRowCancelEventHandler(this.dataGridWords_RowsRemoved);
             // 
             // btnAddNewWord
             // 

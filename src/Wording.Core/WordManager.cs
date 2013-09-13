@@ -37,7 +37,12 @@
                                        TranslationValue = translated
                                    });
         }
-       
+
+
+        public void RemoveWord(int id)
+        {
+            repository.DeleteWord(id);
+        }
     }
 
 
