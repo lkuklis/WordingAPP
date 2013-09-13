@@ -10,7 +10,7 @@ namespace Wording.WordApp
     public partial class Form1 : Form
     {
         private readonly NotifyIcon _notifyIcon1;
-        private readonly IEnumerable<Word> _words;
+        private IEnumerable<Word> _words;
         private readonly WordManager _wp;
 
 
@@ -39,6 +39,7 @@ namespace Wording.WordApp
 
         private void RefreshAndBindDataSource()
         {
+
             var bindingSource = new BindingSource { DataSource = _wp.GetWordsData() };
             dataGridWords.AutoGenerateColumns = true;
             dataGridWords.DataSource = bindingSource;
@@ -46,6 +47,8 @@ namespace Wording.WordApp
 
             dataGridWords.AutoSizeRowsMode =
                 DataGridViewAutoSizeRowsMode.DisplayedCellsExceptHeaders;
+
+            _words = _wp.GetWords();
         }
 
         private void btnSaveWords_Click(object sender, EventArgs e)
@@ -69,43 +72,9 @@ namespace Wording.WordApp
             }
         }
 
-        private readonly List<int> _numberList = new List<int>();
-
-        private int GetWordNumber(int randomId = 0)
-        {
-            if (randomId == 0)
-            {
-                randomId = new Random().Next(1, _words.Count());
-            }
-            _numberList.Capacity = 10;
-            int lastindex = _numberList.Count > 0 ? _numberList.IndexOf(_numberList.Last()) : 0;
-            if (lastindex == _numberList.Capacity - 1)
-            {
-                _numberList.RemoveAt(0);
-            }
-
-            if (_numberList.Contains(randomId))
-            {
-                if (_numberList.Count == _numberList.Capacity && _numberList.FindIndex(a => a == randomId) < 3)
-                {
-                    _numberList.RemoveAt(_numberList.FindIndex(a => a == randomId));
-                }
-
-                return GetWordNumber(randomId + 1);
-            }
-
-            _numberList.Add(randomId);
-            return randomId;
-
-        }
-
         private void timer1_Tick(object sender, EventArgs e)
         {
-            int randomId = GetWordNumber();
-            if (randomId > _words.Count())
-            {
-                randomId = 1;
-            }
+            int randomId = _words.GetRandomElement().Id;
             Word randomWord = _words.SingleOrDefault(w => w.Id == randomId);
             if (randomWord != null)
             {
@@ -119,14 +88,6 @@ namespace Wording.WordApp
             }
         }
 
-        private void dataGridWords_CellValueChanged(object sender, DataGridViewCellEventArgs e)
-        {
-
-            
-            
-
-        }
-
         private void btnAddNewWord_Click(object sender, EventArgs e)
         {
             var newWordForm = new NewWord();
@@ -134,11 +95,10 @@ namespace Wording.WordApp
             if (status == DialogResult.OK)
             {
                 RefreshAndBindDataSource();
-                
+
             }
         }
 
-   
         private void dataGridWords_RowsRemoved(object sender, DataGridViewRowCancelEventArgs e)
         {
             int id = (int)e.Row.Cells[0].Value;
