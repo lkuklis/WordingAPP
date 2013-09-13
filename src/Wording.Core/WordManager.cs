@@ -4,34 +4,34 @@
     using System.Data;
     using System.Linq;
 
-    using Wording.Core.Repository;
+    using Repository;
 
     public class WordManager
     {
         public WordsDataSet WordDataSet;
 
-        private IRepository repository;
+        private readonly IRepository _repository;
 
         public WordManager()
         {
-            repository = new WordRepository();
+            _repository = new WordRepository();
         }
 
         public IEnumerable<Word> GetWords()
         {
-            return repository.GetAll();
+            return _repository.GetAll();
         }
 
         public DataTable GetWordsData()
         {
-            repository.RefreshData();
-            var words = repository.GetAll().ToList();
+            _repository.RefreshData();
+            var words = _repository.GetAll().ToList();
             return words.ToDataTable();
         }
 
         public void AddWord(string original, string translated)
         {
-            repository.AddWord(new Word
+            _repository.AddWord(new Word
                                    {
                                        OriginalValue = original,
                                        TranslationValue = translated
@@ -41,7 +41,7 @@
 
         public void RemoveWord(int id)
         {
-            repository.DeleteWord(id);
+            _repository.DeleteWord(id);
         }
     }
 
