@@ -4,6 +4,7 @@ using System.Linq;
 using System.Windows.Forms;
 using Wording.Core;
 using Wording.WordApp.Properties;
+using System.Configuration;
 
 namespace Wording.WordApp
 {
@@ -12,7 +13,8 @@ namespace Wording.WordApp
         private readonly NotifyIcon _notifyIcon1;
         private IEnumerable<Word> _words;
         private readonly WordManager _wp;
-
+        readonly int _showTime = 1000 * Convert.ToInt32(ConfigurationManager.AppSettings["changeTime"]);
+        readonly int _changeTime = Convert.ToInt32(ConfigurationManager.AppSettings["changeTime"]);
 
         public Form1()
         {
@@ -32,8 +34,8 @@ namespace Wording.WordApp
 
             _notifyIcon1.Icon = Resources.Icon1;
             _notifyIcon1.Visible = true;
-            int changeTime = Convert.ToInt32(System.Configuration.ConfigurationSettings.AppSettings["changeTime"]);
-            timer1.Interval = 1000 * changeTime;
+
+            timer1.Interval = 1000 * _changeTime;
             timer1.Start();
         }
 
@@ -75,17 +77,10 @@ namespace Wording.WordApp
         private void timer1_Tick(object sender, EventArgs e)
         {
             int randomId = _words.GetRandomElement().Id;
-            Word randomWord = _words.SingleOrDefault(w => w.Id == randomId);
-            if (randomWord != null)
-            {
-                _notifyIcon1.ShowBalloonTip(6000, randomWord.OriginalValue,
-                                            string.Format("{0}", randomWord.TranslationValue),
-                                            ToolTipIcon.Info);
-            }
-            else
-            {
-                timer1_Tick(this, null);
-            }
+            Word randomWord = _words.Single(w => w.Id == randomId);
+            _notifyIcon1.ShowBalloonTip(_showTime, randomWord.OriginalValue,
+                                        string.Format("{0}", randomWord.TranslationValue),
+                                        ToolTipIcon.Info);
         }
 
         private void btnAddNewWord_Click(object sender, EventArgs e)
