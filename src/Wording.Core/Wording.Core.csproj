@@ -49,30 +49,6 @@
     <Compile Include="Word.cs" />
     <Compile Include="WordGenerator.cs" />
     <Compile Include="WordManager.cs" />
-    <Compile Include="WordsDataSet.cs">
-      <DependentUpon>WordsDataSet.xsd</DependentUpon>
-      <SubType>Component</SubType>
-    </Compile>
-    <Compile Include="WordsDataSet.Designer.cs">
-      <AutoGen>True</AutoGen>
-      <DesignTime>True</DesignTime>
-      <DependentUpon>WordsDataSet.xsd</DependentUpon>
-    </Compile>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="WordsDataSet.xsc">
-      <DependentUpon>WordsDataSet.xsd</DependentUpon>
-      <SubType>Designer</SubType>
-    </None>
-    <None Include="WordsDataSet.xsd">
-      <SubType>Designer</SubType>
-      <Generator>MSDataSetGenerator</Generator>
-      <LastGenOutput>WordsDataSet.Designer.cs</LastGenOutput>
-    </None>
-    <None Include="WordsDataSet.xss">
-      <DependentUpon>WordsDataSet.xsd</DependentUpon>
-      <SubType>Designer</SubType>
-    </None>
   </ItemGroup>
   <ItemGroup>
     <Content Include="WordsData.xml">

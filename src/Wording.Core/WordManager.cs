@@ -8,8 +8,6 @@
 
     public class WordManager
     {
-        public WordsDataSet WordDataSet;
-
         private readonly IRepository _repository;
 
         public WordManager()
@@ -22,11 +20,10 @@
             return _repository.GetAll();
         }
 
-        public DataTable GetWordsData()
+        public List<Word> GetWordsData()
         {
             _repository.RefreshData();
-            var words = _repository.GetAll().ToList();
-            return words.ToDataTable();
+            return _repository.GetAll().ToList();
         }
 
         public void AddWord(string original, string translated)

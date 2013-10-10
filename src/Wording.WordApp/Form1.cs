@@ -41,7 +41,6 @@ namespace Wording.WordApp
 
         private void RefreshAndBindDataSource()
         {
-
             var bindingSource = new BindingSource { DataSource = _wp.GetWordsData() };
             dataGridWords.AutoGenerateColumns = true;
             dataGridWords.DataSource = bindingSource;
