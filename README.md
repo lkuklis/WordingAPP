@@ -1,2 +1,2 @@
-wordingapp
+Wording APP
 ==========
