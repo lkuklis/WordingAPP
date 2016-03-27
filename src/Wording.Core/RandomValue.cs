@@ -14,7 +14,7 @@ namespace Wording.Core
 
         public static T GetRandomElement<T>(this IEnumerable<T> list)
         {
-            if (list.Count() == 0)
+            if (!list.Any())
             {
                 return default(T);
             }
