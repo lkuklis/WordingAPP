@@ -1,11 +1,10 @@
-﻿namespace Wording.Core
+﻿using System.Collections.Generic;
+using System.Linq;
+
+using Wording.Core.Repository;
+
+namespace Wording.Core
 {
-    using System.Collections.Generic;
-    using System.Data;
-    using System.Linq;
-
-    using Repository;
-
     public class WordManager
     {
         private readonly IRepository _repository;

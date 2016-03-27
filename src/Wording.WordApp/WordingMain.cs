@@ -36,15 +36,14 @@ namespace Wording.WordApp
 
         private void RefreshAndBindDataSource()
         {
-            var bindingSource = new BindingSource { DataSource = _wordManager.GetWordsData() };
+            _words = _wordManager.GetWordsData();
+            var bindingSource = new BindingSource { DataSource = _words};
             dataGridWords.AutoGenerateColumns = true;
             dataGridWords.DataSource = bindingSource;
             dataGridWords.Columns[0].ReadOnly = true;
 
             dataGridWords.AutoSizeRowsMode =
                 DataGridViewAutoSizeRowsMode.DisplayedCellsExceptHeaders;
-
-            _words = _wordManager.GetWords();
         }
 
         private void Form1_Resize(object sender, EventArgs e)

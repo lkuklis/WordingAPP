@@ -50,7 +50,6 @@
     <Compile Include="Repository\IRepository.cs" />
     <Compile Include="Repository\WordRepository.cs" />
     <Compile Include="Word.cs" />
-    <Compile Include="WordGenerator.cs" />
     <Compile Include="WordManager.cs" />
   </ItemGroup>
   <ItemGroup>

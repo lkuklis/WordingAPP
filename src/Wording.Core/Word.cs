@@ -1,7 +1,5 @@
 ﻿namespace Wording.Core
 {
-    using System;
-
     public class Word
     {
         public int Id { get; set; }
