@@ -1,0 +1,3 @@
+"%ProgramFiles(x86)%\MSBuild\14.0\Bin\MSBuild.exe" src/Wording.sln /p:Configuration=Release
+
+"src\packages\ILMerge.2.14.1208\tools\ilmerge.exe" /ndebug /copyattrs /targetplatform:4.0,"C:\Windows\Microsoft.NET\Framework64\v4.0.30319" /out:"Wordapp.exe" "src\Wording.WordApp\bin\Release\Wording.WordApp.exe" "src\Wording.WordApp\bin\Release\Wording.Core.dll"  "src\Wording.WordApp\bin\Release\System.Data.SqlServerCe.dll"

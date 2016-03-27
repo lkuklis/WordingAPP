@@ -1,6 +1,6 @@
 ﻿namespace Wording.WordApp
 {
-    partial class Form1
+    partial class WordingMain
     {
         /// <summary>
         /// Required designer variable.
@@ -52,15 +52,15 @@
             this.btnAddNewWord.UseVisualStyleBackColor = true;
             this.btnAddNewWord.Click += new System.EventHandler(this.btnAddNewWord_Click);
             // 
-            // Form1
+            // WordingMain
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(548, 460);
             this.Controls.Add(this.btnAddNewWord);
             this.Controls.Add(this.dataGridWords);
-            this.Name = "Form1";
-            this.Text = "Form1";
+            this.Name = "WordingMain";
+            this.Text = "Wording App";
             this.Resize += new System.EventHandler(this.Form1_Resize);
             ((System.ComponentModel.ISupportInitialize)(this.dataGridWords)).EndInit();
             this.ResumeLayout(false);

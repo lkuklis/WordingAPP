@@ -52,7 +52,7 @@
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup>
-    <ApplicationIcon>flock_ico04.ico</ApplicationIcon>
+    <ApplicationIcon>Resources\Icon1.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
@@ -70,11 +70,11 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Form1.cs">
+    <Compile Include="WordingMain.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Form1.Designer.cs">
-      <DependentUpon>Form1.cs</DependentUpon>
+    <Compile Include="WordingMain.Designer.cs">
+      <DependentUpon>WordingMain.cs</DependentUpon>
     </Compile>
     <Compile Include="NewWord.cs">
       <SubType>Form</SubType>
@@ -84,8 +84,8 @@
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <EmbeddedResource Include="Form1.resx">
-      <DependentUpon>Form1.cs</DependentUpon>
+    <EmbeddedResource Include="WordingMain.resx">
+      <DependentUpon>WordingMain.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="NewWord.resx">
       <DependentUpon>NewWord.cs</DependentUpon>
@@ -125,8 +125,6 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Resources\flock_ico04.ico" />
-    <Content Include="flock_ico04.ico" />
     <Content Include="Resources\Icon1.ico" />
   </ItemGroup>
   <ItemGroup>

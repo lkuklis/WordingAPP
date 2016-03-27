@@ -1,11 +1,10 @@
 ﻿using System.Configuration;
+using System.Collections.Generic;
+using System.Linq;
+using System.Xml.Linq;
 
 namespace Wording.Core.Repository
 {
-    using System.Collections.Generic;
-    using System.Linq;
-    using System.Xml.Linq;
-
     public class WordRepository : IRepository
     {
         private List<Word> _words;

@@ -12,7 +12,7 @@ namespace Wording.Core
     {
         private static readonly Random Random = new Random();
 
-        public static T GetRandomElement<T>(this IEnumerable<T> list)
+        public static T GetRandom<T>(this IEnumerable<T> list)
         {
             if (!list.Any())
             {

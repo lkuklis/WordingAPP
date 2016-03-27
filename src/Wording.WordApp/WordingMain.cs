@@ -8,7 +8,7 @@ using System.Configuration;
 
 namespace Wording.WordApp
 {
-    public partial class Form1 : Form
+    public partial class WordingMain : Form
     {
         private readonly NotifyIcon _notifyIcon;
         private IEnumerable<Word> _words;
@@ -16,25 +16,20 @@ namespace Wording.WordApp
         readonly int _showTime = 1000 * Convert.ToInt32(ConfigurationManager.AppSettings["changeTime"]);
         readonly int _changeTime = Convert.ToInt32(ConfigurationManager.AppSettings["changeTime"]);
 
-        public Form1()
+        public WordingMain()
         {
             InitializeComponent();
 
             _wordManager = new WordManager();
-
             RefreshAndBindDataSource();
 
             _notifyIcon = new NotifyIcon();
             _notifyIcon.Click += NotifyIconClick;
-            var timer = new Timer();
-            timer.Tick += WordTick;
-
-
-            _words = _wordManager.GetWords();
-
             _notifyIcon.Icon = Resources.Icon1;
             _notifyIcon.Visible = true;
 
+            var timer = new Timer();
+            timer.Tick += ShowWordTick;
             timer.Interval = 1000 * _changeTime;
             timer.Start();
         }
@@ -69,9 +64,9 @@ namespace Wording.WordApp
             }
         }
 
-        private void WordTick(object sender, EventArgs e)
+        private void ShowWordTick(object sender, EventArgs e)
         {
-            var randomWord = _words.GetRandomElement();
+            var randomWord = _words.GetRandom();
             _notifyIcon.ShowBalloonTip(_showTime, randomWord.OriginalValue,
                                         string.Format("{0}", randomWord.TranslationValue),
                                         ToolTipIcon.Info);
