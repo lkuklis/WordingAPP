@@ -1,7 +1,6 @@
 using System;
 using System.Windows.Forms;
-using Wording.Core;
-using Wording.Core.Storage;
+using Wording.Shell;
 
 namespace Wording.WordApp;
 
@@ -12,17 +11,9 @@ static class Program
     {
         ApplicationConfiguration.Initialize();
 
-        var ustawienia = WordingSettings.Load();
+        // Jeden magazyn i jeden manager na caly proces - patrz WordingHost.
+        var host = WordingHost.Create();
 
-        // Jeden magazyn na caly proces. Wczesniej kazdy ekran tworzyl wlasny,
-        // wiec okna pisaly przez osobne kopie danych w pamieci.
-        var magazyn = JsonWordStore.OpenOrMigrate(
-            ustawienia.ResolveDataFile(),
-            WordingSettings.FindLegacyXml(),
-            TimeProvider.System);
-
-        var manager = new WordManager(magazyn);
-
-        Application.Run(new WordingMain(manager, ustawienia));
+        Application.Run(new WordingMain(host.Manager, host.Settings));
     }
 }

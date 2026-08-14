@@ -1,13 +1,13 @@
-using System;
 using Wording.Core;
 
-namespace Wording.WordApp;
+namespace Wording.Shell;
 
 /// <summary>
-/// Wiersz siatki. Osobny typ, bo <see cref="Word"/> niesie teraz zagniezdzony stan
-/// powtorek, ktorego DataGridView nie potrafi sensownie pokazac sam z siebie.
+/// Wiersz listy slowek, wspolny dla powloki WinForms i Avalonii.
+/// Osobny typ, bo <see cref="Word"/> niesie zagniezdzony stan powtorek,
+/// ktorego zadna z siatek nie pokaze sensownie sama z siebie.
 /// </summary>
-sealed class WordRow
+public sealed class WordRow
 {
     public WordRow(Word word, DateTimeOffset now)
     {

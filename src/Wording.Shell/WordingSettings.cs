@@ -1,8 +1,7 @@
-using System.IO;
 using Microsoft.Extensions.Configuration;
 using Wording.Core.Storage;
 
-namespace Wording.WordApp;
+namespace Wording.Shell;
 
 /// <summary>
 /// Ustawienia aplikacji z appsettings.json.
