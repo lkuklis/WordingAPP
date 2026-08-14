@@ -1,24 +1,28 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+using System;
 using System.Windows.Forms;
+using Wording.Core;
+using Wording.Core.Storage;
 
-namespace Wording.WordApp
+namespace Wording.WordApp;
+
+static class Program
 {
-    static class Program
+    [STAThread]
+    static void Main()
     {
-        /// <summary>
-        /// The main entry point for the application.
-        /// </summary>
-        [STAThread]
-        static void Main()
-        {
-            Application.EnableVisualStyles();
-            Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new WordingMain());
+        ApplicationConfiguration.Initialize();
 
+        var ustawienia = WordingSettings.Load();
 
+        // Jeden magazyn na caly proces. Wczesniej kazdy ekran tworzyl wlasny,
+        // wiec okna pisaly przez osobne kopie danych w pamieci.
+        var magazyn = JsonWordStore.OpenOrMigrate(
+            ustawienia.ResolveDataFile(),
+            WordingSettings.FindLegacyXml(),
+            TimeProvider.System);
 
-        }
+        var manager = new WordManager(magazyn);
+
+        Application.Run(new WordingMain(manager, ustawienia));
     }
 }

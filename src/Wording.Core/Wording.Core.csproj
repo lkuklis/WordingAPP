@@ -4,15 +4,23 @@
     <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>Wording.Core</RootNamespace>
     <AssemblyTitle>Wording.Core</AssemblyTitle>
-    <!-- Celowo bez -windows: cala logika ma byc platformo-niezalezna i testowalna na macOS. -->
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- Celowo bez -windows: cala logika ma byc platformo-niezalezna i testowalna na macOS.
+         Core nie czyta zadnej konfiguracji - ustawienia wstrzykuje warstwa aplikacji. -->
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="System.Configuration.ConfigurationManager" Version="10.0.11" />
+    <!-- Startowy pakiet slowek EN->PL. Sluzy tez jako zrodlo jednorazowej
+         migracji ze starego formatu XML na words.json. -->
+    <Content Include="WordsData.xml" CopyToOutputDirectory="Always" />
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="WordsData.xml" CopyToOutputDirectory="Always" />
+    <!-- Testy sprawdzaja wagi selektora, ktore sa szczegolem implementacyjnym
+         i nie powinny wchodzic do publicznego API. -->
+    <InternalsVisibleTo Include="Wording.Core.Tests" />
   </ItemGroup>
 
 </Project>

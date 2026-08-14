@@ -4,47 +4,56 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this app is
 
-Wording is a Windows desktop vocabulary-drilling app (originally written 2013, migrated from .NET Framework 4.6 to .NET 10 in 2026). It sits in the system tray and, on a timer, pops a Windows notification showing a random word from the user's list: the notification **title** is the original word, the **body** is its translation. Learning is meant to happen through passive repetition — you keep seeing words while doing other work.
+Wording is a Windows tray application for learning vocabulary. Originally written in 2013 against .NET Framework 4.6, migrated to .NET 10 in 2026. A timer fires every few seconds and shows a word in a notification — title is the original, body is the translation — so learning happens ambiently while the user works on something else.
 
-The main window is a `DataGridView` of all word pairs plus an **Add** button; minimizing hides the window to the tray, clicking the tray icon restores it. Deleting a grid row deletes the word. The shipped sample pack is English → Polish.
-
-Translations live in a plain XML file (`WordsData.xml`, `<AllWords>/<Word>/<Id|Original|Translated>`) which can be edited by the app or by hand.
+The user grades the last shown word from the tray icon's context menu (*I know it* / *Hard* / *Don't know*), which feeds an SM-2 spaced repetition schedule. The main window is a read-only grid of all words with their review state, plus an **Add** button. Minimizing hides to the tray.
 
 ## Layout
 
-- `Wording.slnx` — solution in the new XML format (`.slnx`), the .NET 10 SDK default. Regenerate as classic `.sln` with `dotnet new sln --format sln` if an older Visual Studio can't open it.
-- `src/Wording.Core/` — `net10.0` class library, **deliberately not `-windows`**: it holds all logic and must stay platform-independent so it builds, runs, and tests on macOS. Domain (`Word`), XML-backed store (`Repository/WordRepository.cs` implementing `IRepository`), the `WordManager` façade, and `RandomValue.GetRandom<T>()`. Ships `WordsData.xml` as content, copied to output on build.
-- `src/Wording.WordApp/` — `net10.0-windows` WinForms executable. `WordingMain` owns the `NotifyIcon`, the `Timer`, and the grid; `NewWord` is the add-word dialog. Sets `EnableWindowsTargeting` so it compiles on non-Windows hosts.
-- `tests/Wording.Core.Tests/` — xUnit, `net10.0`. Runs natively on macOS.
+- `Wording.slnx` — solution in the `.slnx` XML format, the .NET 10 SDK default. Regenerate as classic `.sln` with `dotnet new sln --format sln` if an older Visual Studio can't open it.
+- `src/Wording.Core/` — `net10.0`, **deliberately not `-windows`**. All logic lives here: `Learning/` (SM-2 scheduler, weighted selector, review state), `Storage/` (JSON store, legacy XML importer, path resolution), and the `WordManager` façade. Builds, runs, and tests natively on macOS.
+- `src/Wording.WordApp/` — `net10.0-windows` WinForms shell. `EnableWindowsTargeting` lets it compile on non-Windows hosts.
+- `tests/Wording.Core.Tests/` — xUnit, `net10.0`, 49 tests, runs on macOS.
 
-## Architecture notes that aren't obvious from one file
+## Architecture
 
-- **No database despite appearances.** The whole store is `XDocument` in memory, re-saved to disk after every add/delete/edit. `WordRepository` loads its file eagerly in the constructor and caches the list; `RefreshData()` is the only way to reload. `WordManager.GetWords()` returns the cache, `GetWordsData()` forces a refresh first — the UI uses the latter.
-- **Every consumer constructs its own repository.** `WordManager` news up `WordRepository` directly, and `WordingMain` and `NewWord` each new up their own `WordManager`. So the add dialog writes through a *different* in-memory copy than the main form, which is why the main form has to re-read the file after `DialogResult.OK`. There is no DI container and `IRepository` is never substituted. `WordRepositoryTests.GetAll_NieWidziZmianBezRefreshData` pins this behaviour.
-- **The data file path is a bare filename** (`defaultFileName` in `App.config`, value `WordsData.xml`) resolved relative to the current working directory — not to the assembly location and not to a per-user AppData path. Launching from a different cwd breaks the app.
-- **Config keys in `App.config`:** `changeTime` (seconds between notifications) and `showTime` (intended balloon duration). Note `WordingMain` computes *both* `_showTime` and `_changeTime` from the `changeTime` key — `showTime` is read from config nowhere. Preserve or deliberately fix this when refactoring; don't "fix" it silently.
-- **`Id` is `max(Id) + 1`, recomputed per add**, so deleting the highest-numbered word frees its id for reuse, and ids are not contiguous (id 6 is missing in the sample data). Pinned by `AddWord_PoUsunieciuNajwyzszegoId_UzywaIdPonownie`. This is why any cross-device sync needs GUIDs instead.
-- **`EditWord` throws on an unknown id** — `FirstOrDefault` returns null and is dereferenced immediately.
-- **There is no repetition algorithm.** `RandomValue.GetRandom` picks uniformly at random; nothing tracks what the user knows. Despite the app's stated purpose, spaced repetition is unimplemented.
-- **`NotifyIcon.ShowBalloonTip` is legacy.** Windows 10+ routes balloon tips to the toast system and ignores the timeout argument, so the `showTime` bug above is doubly inert. Modern toasts with action buttons need the Windows App SDK (`Microsoft.WindowsAppSDK`) plus COM activator registration for unpackaged apps.
+**Core knows nothing about configuration or the UI.** `Program.cs` is the composition root: it reads `appsettings.json`, opens one `JsonWordStore`, wraps it in one `WordManager`, and hands that same instance to every form. This is deliberate — the pre-migration code had each screen construct its own repository, so the add dialog wrote through a different in-memory copy than the main window and the grid needed a manual reload to notice. `WordManagerTests.WspolnyMagazyn_ObaEkranyWidzaTeSameDaneBezOdswiezania` guards against a regression.
+
+**Selection is weighted, not gated.** `WordSelector` does *not* filter to words whose `DueUtc` has passed, which is what a conventional SRS would do. This app shows a word every few seconds rather than in review sessions, so due-date gating would leave it with nothing to display most of the time. Instead every word gets a weight — new words highest, then overdue ones scaling with lateness (capped at 30 days so one long-forgotten word can't dominate), then a small non-zero floor for well-known words so nothing ever leaves rotation entirely. Measured behaviour: after grading half the starter pack as known, those words take ~0.2% of impressions but still appear. Change the constants in `WordSelector` rather than adding filtering.
+
+**`SpacedRepetitionScheduler` is a pure function** over `(ReviewState, ReviewGrade, DateTimeOffset)`. `ReviewState` is an immutable record. Time comes from an injected `TimeProvider` everywhere, so tests use `FakeTimeProvider` and never sleep.
+
+**JSON persistence is source-generated, not reflection-based.** `WordJsonContext` carries the `[JsonSerializable]` declarations. This is not a style preference: hosts that set `JsonSerializerIsReflectionEnabledByDefault=false` (file-based apps are one) throw `InvalidOperationException` at the first serialize, and trimming or NativeAOT would break it the same way. **If you add a type to the persisted graph, add it to `WordJsonContext`** — the unit tests run in a host with reflection enabled and will *not* catch the omission.
+
+**Saves are atomic** — write to `<path>.tmp`, then `File.Move(overwrite: true)`.
+
+## Data
+
+`words.json` in the per-user data directory: `%APPDATA%\Wording` on Windows, `~/Library/Application Support/Wording` on macOS (`SpecialFolder.ApplicationData` points at `~/.config` there, which is wrong for macOS, hence the explicit branch in `WordingPaths`). Overridable via `wording:dataFile` in `appsettings.json`.
+
+Ids are GUIDs. The old format's `Id = max + 1` was recomputed on every add, so deleting the highest-numbered word freed its id for reuse — unusable as a sync key. Review state travels inside the word record so a future macOS port reading the same file stays in sync.
+
+On first run `JsonWordStore.OpenOrMigrate` imports any `WordsData.xml` found next to the executable or in the working directory, assigning fresh GUIDs. The shipped `WordsData.xml` starter pack (38 English→Polish entries) doubles as the seed for new installs; `StarterPackMigrationTests` exercises the real file, not a fixture.
 
 ## Build and test
 
-Requires the .NET 10 SDK (`~/.dotnet` on this machine, `DOTNET_ROOT` and PATH set in `~/.zshrc`).
+Requires the .NET 10 SDK (`~/.dotnet` here; `DOTNET_ROOT` and PATH are set in `~/.zshrc`).
 
 ```bash
-dotnet build Wording.slnx           # builds all three projects
-dotnet test                         # Core tests — these run on macOS
-dotnet test --filter FullyQualifiedName~WordRepositoryTests   # one test class
-dotnet test --filter "FullyQualifiedName~AddWord_ZapisujeDoPliku"  # one test
+dotnet build Wording.slnx
+dotnet test
+dotnet test --filter FullyQualifiedName~WordSelectorTests              # one class
+dotnet test --filter "FullyQualifiedName~Waga_JestOgraniczonaZGory"    # one test
 ```
 
-`Wording.WordApp` **compiles** on macOS thanks to `EnableWindowsTargeting`, but cannot run there — WinForms needs Windows. Verify UI changes by compiling locally, then run on Windows for anything involving the tray icon or notifications. There is no WinForms designer on macOS; edit `.Designer.cs` by hand and keep it consistent with the paired `.resx`.
+`Wording.WordApp` **compiles** on macOS but cannot run there. Verify UI changes by compiling locally, then run on Windows for anything touching the tray icon or notifications. There is no WinForms designer on macOS — edit `.Designer.cs` by hand, keeping it consistent with the paired `.resx`.
+
+For logic changes, `dotnet run some.cs` as a .NET 10 file-based app against `Wording.Core` is a fast way to see real behaviour without Windows. Note such hosts disable reflection-based JSON, which is a feature here — it catches serialization regressions the test project cannot.
 
 Producing a Windows binary from macOS:
 
 ```bash
-# framework-dependent — ~200 KB, needs .NET 10 Desktop Runtime on the target machine
+# framework-dependent — small, needs .NET 10 Desktop Runtime on the target
 dotnet publish src/Wording.WordApp/Wording.WordApp.csproj -c Release -r win-x64 --self-contained false -o out
 
 # self-contained single file — ~111 MB, no prerequisites (replaces the old ILMerge step)
@@ -52,11 +61,16 @@ dotnet publish src/Wording.WordApp/Wording.WordApp.csproj -c Release -r win-x64 
   --self-contained true -p:PublishSingleFile=true -o out
 ```
 
-`PublishTrimmed` is not supported for WinForms, so the self-contained size cannot be meaningfully reduced.
+`PublishTrimmed` is unsupported for WinForms, so self-contained size can't meaningfully shrink.
 
-## Working in this repo
+## Known gaps
 
-- Keep `Wording.Core` free of any Windows-only dependency. It is the shared contract for a planned native macOS port, and its testability on macOS depends on it.
-- `WordRepository` has a `(string documentFileName)` constructor for tests; the parameterless one reads `App.config` and preserves the original behaviour. Prefer the explicit one in new code.
-- Sample data in `WordsData.xml` is committed intentionally (English→Polish starter pack) — treat it as a fixture, not as user state.
-- Test names are in Polish, matching the working language of the project's issues and commits.
+- **Notifications are still `NotifyIcon.ShowBalloonTip`**, which Windows 10+ reroutes to the toast system while ignoring the timeout argument. Grading therefore lives in the tray context menu. Replacing this with Windows App SDK toasts carrying action buttons is the next planned step and needs COM activator registration for unpackaged apps.
+- **The grid is read-only.** Cell editing was never persisted in the original either; rather than keep pretending, editing is disabled. Deleting rows works. Re-enabling edits means mapping `WordRow` back through `IWordStore.Update`.
+- **A native macOS port is planned** as a separate SwiftUI menu-bar app sharing `words.json`, rather than a cross-platform UI framework — notification APIs are the least abstractable part and are the whole product here. Keep `Wording.Core` free of Windows-only dependencies.
+
+## Conventions
+
+- Code comments, test names, and commit messages are in Polish; user-facing UI strings are in English, matching the original application.
+- `TreatWarningsAsErrors` is on in `Wording.Core`.
+- `InternalsVisibleTo` exposes `WordSelector.Weight` and its constants to the test project; keep implementation details internal rather than widening the public API for tests.

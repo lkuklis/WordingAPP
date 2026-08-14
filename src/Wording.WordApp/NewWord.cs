@@ -1,37 +1,46 @@
-﻿using System;
+using System;
 using System.Windows.Forms;
+using Wording.Core;
 
-namespace Wording.WordApp
+namespace Wording.WordApp;
+
+public partial class NewWord : Form
 {
-    using Wording.Core;
+    readonly WordManager _manager;
 
-    public partial class NewWord : Form
+    /// <summary>
+    /// Manager przychodzi z zewnatrz - dialog celowo nie tworzy wlasnego,
+    /// bo wtedy pisalby przez osobna kopie danych w pamieci.
+    /// </summary>
+    public NewWord(WordManager manager)
     {
-        private WordManager _wp;
+        ArgumentNullException.ThrowIfNull(manager);
 
-        public NewWord()
+        InitializeComponent();
+
+        _manager = manager;
+    }
+
+    void btnSave_Click(object sender, EventArgs e)
+    {
+        try
         {
-            InitializeComponent();
-            _wp = new WordManager();
+            _manager.AddWord(txtOriginal.Text, txtTranslation.Text);
+        }
+        catch (ArgumentException wyjatek)
+        {
+            MessageBox.Show(this, wyjatek.Message, "Wording", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
         }
 
-        private void btnSave_Click(object sender, EventArgs e)
-        {
-            var original = txtOriginal.Text;
-            var translation = txtTranslation.Text;
-            _wp.AddWord(original, translation);
-            this.DialogResult = DialogResult.OK;
-            this.Dispose();
+        // Ustawienie DialogResult samo zamyka okno modalne; wolanie Dispose()
+        // w tym miejscu, jak robila poprzednia wersja, niszczylo formularz
+        // jeszcze w trakcie obslugi zdarzenia.
+        DialogResult = DialogResult.OK;
+    }
 
-            
-
-        }
-
-        private void btnCancel_Click(object sender, EventArgs e)
-        {
-            this.DialogResult = DialogResult.Cancel;
-            this.Dispose();
-
-        }
+    void btnCancel_Click(object sender, EventArgs e)
+    {
+        DialogResult = DialogResult.Cancel;
     }
 }
