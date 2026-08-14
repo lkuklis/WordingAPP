@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Wording.Core/Wording.Core.csproj" />
+    <Project Path="src/Wording.WordApp/Wording.WordApp.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Wording.Core.Tests/Wording.Core.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -11,10 +11,20 @@ namespace Wording.Core.Repository
 
         private XDocument _wordsDocument;
 
-        private readonly string _documentFileName = ConfigurationManager.AppSettings["defaultFileName"];
+        private readonly string _documentFileName;
 
         public WordRepository()
+            : this(ConfigurationManager.AppSettings["defaultFileName"])
         {
+        }
+
+        /// <summary>
+        /// Pozwala wskazac plik danych wprost - uzywane przez testy.
+        /// Konstruktor bezparametrowy zachowuje dotychczasowe zachowanie (sciezka z App.config).
+        /// </summary>
+        public WordRepository(string documentFileName)
+        {
+            this._documentFileName = documentFileName;
             this.RefreshData();
         }
 
