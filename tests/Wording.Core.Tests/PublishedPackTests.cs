@@ -59,6 +59,36 @@ public class PublishedPackTests
         Assert.Empty(duplicates);
     }
 
+    [Fact]
+    public void TheGeneratorPromptQuotesTheLimitsThatAreActuallyEnforced()
+    {
+        // learning_data/PROMPT.md tells contributors - and their AI - what a pack may
+        // contain. A prompt that has drifted from PackLimits produces files that look
+        // right and are refused on import, which is worse than having no prompt.
+        var prompt = File.ReadAllText(Path.Combine(Directory_(), "PROMPT.md"));
+
+        Assert.Contains(PackLimits.MaxWords.ToString(), prompt, StringComparison.Ordinal);
+        Assert.Contains(PackLimits.MaxFieldLength.ToString(), prompt, StringComparison.Ordinal);
+        Assert.Contains(PackLimits.MaxNameLength.ToString(), prompt, StringComparison.Ordinal);
+        Assert.Contains(PackLimits.MaxDescriptionLength.ToString(), prompt, StringComparison.Ordinal);
+        Assert.Contains(PackLimits.MaxIdLength.ToString(), prompt, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheLimitsMatchTheSwiftPort()
+    {
+        // Spelled out rather than read from PackLimits, so changing one port fails here
+        // and says plainly that WordingKit/PackLimits.swift has to change with it. The
+        // two apps import the same published packs; limits that disagree mean a pack one
+        // of them accepts and the other refuses.
+        Assert.Equal(2 * 1024 * 1024, PackLimits.MaxPayloadBytes);
+        Assert.Equal(5_000, PackLimits.MaxWords);
+        Assert.Equal(200, PackLimits.MaxFieldLength);
+        Assert.Equal(80, PackLimits.MaxNameLength);
+        Assert.Equal(300, PackLimits.MaxDescriptionLength);
+        Assert.Equal(64, PackLimits.MaxIdLength);
+    }
+
     /// <summary>
     /// Located from this source file rather than the working directory, which differs
     /// between `dotnet test`, the IDE and CI.

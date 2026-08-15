@@ -44,6 +44,36 @@ import Testing
         }
     }
 
+    @Test func theGeneratorPromptQuotesTheLimitsThatAreActuallyEnforced() throws {
+        // learning_data/PROMPT.md tells contributors - and their AI - what a pack may
+        // contain. A prompt that has drifted from PackLimits produces files that look
+        // right and are refused on import, which is worse than having no prompt.
+        let prompt = try String(contentsOf: Self.directory().appending(path: "PROMPT.md"), encoding: .utf8)
+
+        for limit in [
+            PackLimits.maxWords,
+            PackLimits.maxFieldLength,
+            PackLimits.maxNameLength,
+            PackLimits.maxDescriptionLength,
+            PackLimits.maxIdLength,
+        ] {
+            #expect(prompt.contains(String(limit)), "PROMPT.md never mentions \(limit)")
+        }
+    }
+
+    @Test func theLimitsMatchTheDotNetPort() {
+        // Spelled out rather than read from PackLimits, so changing one port fails here
+        // and says plainly that Wording.Core/Packs/PackLimits.cs has to change with it.
+        // The two apps import the same published packs; limits that disagree mean a pack
+        // one of them accepts and the other refuses.
+        #expect(PackLimits.maxPayloadBytes == 2 * 1024 * 1024)
+        #expect(PackLimits.maxWords == 5_000)
+        #expect(PackLimits.maxFieldLength == 200)
+        #expect(PackLimits.maxNameLength == 80)
+        #expect(PackLimits.maxDescriptionLength == 300)
+        #expect(PackLimits.maxIdLength == 64)
+    }
+
     @Test func noPublishedPackRepeatsAWord() throws {
         for file in try Self.published() {
             let pack = try WordPackReader.read(try Data(contentsOf: file))

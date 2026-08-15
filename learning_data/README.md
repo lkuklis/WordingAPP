@@ -48,3 +48,7 @@ with the same parser the app uses, so a file that would be refused on import fai
 build instead of reaching anyone.
 
 Keep one language pair per pack and give it a name that says which direction it goes.
+
+**[PROMPT.md](PROMPT.md) has a ready prompt for generating one with an AI.** It carries the
+limits above verbatim, so a model that follows it produces a file that imports cleanly;
+a test fails if the prompt and the validator ever drift apart.
