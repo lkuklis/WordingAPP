@@ -17,6 +17,9 @@ namespace Wording.WordApp
 
         private void InitializeComponent()
         {
+            this.lblCatalogue = new System.Windows.Forms.Label();
+            this.listCatalogue = new System.Windows.Forms.ListView();
+            this.btnReload = new System.Windows.Forms.Button();
             this.lblAddress = new System.Windows.Forms.Label();
             this.txtAddress = new System.Windows.Forms.TextBox();
             this.btnFetch = new System.Windows.Forms.Button();
@@ -29,10 +32,42 @@ namespace Wording.WordApp
             this.grpPreview.SuspendLayout();
             this.SuspendLayout();
             //
+            // lblCatalogue
+            //
+            this.lblCatalogue.AutoSize = true;
+            this.lblCatalogue.Location = new System.Drawing.Point(12, 12);
+            this.lblCatalogue.Name = "lblCatalogue";
+            this.lblCatalogue.Size = new System.Drawing.Size(300, 13);
+            this.lblCatalogue.TabIndex = 10;
+            this.lblCatalogue.Text = "Packs published with Wording — double-click one to download it";
+            //
+            // btnReload
+            //
+            this.btnReload.Location = new System.Drawing.Point(392, 7);
+            this.btnReload.Name = "btnReload";
+            this.btnReload.Size = new System.Drawing.Size(75, 23);
+            this.btnReload.TabIndex = 11;
+            this.btnReload.Text = "Reload";
+            this.btnReload.UseVisualStyleBackColor = true;
+            this.btnReload.Click += new System.EventHandler(this.btnReload_Click);
+            //
+            // listCatalogue
+            //
+            this.listCatalogue.FullRowSelect = true;
+            this.listCatalogue.HideSelection = false;
+            this.listCatalogue.Location = new System.Drawing.Point(12, 34);
+            this.listCatalogue.MultiSelect = false;
+            this.listCatalogue.Name = "listCatalogue";
+            this.listCatalogue.Size = new System.Drawing.Size(455, 150);
+            this.listCatalogue.TabIndex = 12;
+            this.listCatalogue.UseCompatibleStateImageBehavior = false;
+            this.listCatalogue.View = System.Windows.Forms.View.Details;
+            this.listCatalogue.DoubleClick += new System.EventHandler(this.listCatalogue_DoubleClick);
+            //
             // lblAddress
             //
             this.lblAddress.AutoSize = true;
-            this.lblAddress.Location = new System.Drawing.Point(12, 15);
+            this.lblAddress.Location = new System.Drawing.Point(12, 199);
             this.lblAddress.Name = "lblAddress";
             this.lblAddress.Size = new System.Drawing.Size(48, 13);
             this.lblAddress.TabIndex = 0;
@@ -40,7 +75,7 @@ namespace Wording.WordApp
             //
             // txtAddress
             //
-            this.txtAddress.Location = new System.Drawing.Point(66, 12);
+            this.txtAddress.Location = new System.Drawing.Point(66, 196);
             this.txtAddress.Name = "txtAddress";
             this.txtAddress.Size = new System.Drawing.Size(320, 20);
             this.txtAddress.TabIndex = 1;
@@ -48,7 +83,7 @@ namespace Wording.WordApp
             //
             // btnFetch
             //
-            this.btnFetch.Location = new System.Drawing.Point(392, 10);
+            this.btnFetch.Location = new System.Drawing.Point(392, 194);
             this.btnFetch.Name = "btnFetch";
             this.btnFetch.Size = new System.Drawing.Size(75, 23);
             this.btnFetch.TabIndex = 2;
@@ -61,7 +96,7 @@ namespace Wording.WordApp
             this.grpPreview.Controls.Add(this.lblName);
             this.grpPreview.Controls.Add(this.lblDetail);
             this.grpPreview.Controls.Add(this.btnImport);
-            this.grpPreview.Location = new System.Drawing.Point(12, 45);
+            this.grpPreview.Location = new System.Drawing.Point(12, 229);
             this.grpPreview.Name = "grpPreview";
             this.grpPreview.Size = new System.Drawing.Size(455, 130);
             this.grpPreview.TabIndex = 3;
@@ -97,14 +132,14 @@ namespace Wording.WordApp
             //
             // lblStatus
             //
-            this.lblStatus.Location = new System.Drawing.Point(12, 185);
+            this.lblStatus.Location = new System.Drawing.Point(12, 369);
             this.lblStatus.Name = "lblStatus";
             this.lblStatus.Size = new System.Drawing.Size(455, 45);
             this.lblStatus.TabIndex = 4;
             //
             // btnClose
             //
-            this.btnClose.Location = new System.Drawing.Point(392, 238);
+            this.btnClose.Location = new System.Drawing.Point(392, 422);
             this.btnClose.Name = "btnClose";
             this.btnClose.Size = new System.Drawing.Size(75, 23);
             this.btnClose.TabIndex = 5;
@@ -118,7 +153,10 @@ namespace Wording.WordApp
             this.CancelButton = this.btnClose;
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(479, 271);
+            this.ClientSize = new System.Drawing.Size(479, 455);
+            this.Controls.Add(this.lblCatalogue);
+            this.Controls.Add(this.btnReload);
+            this.Controls.Add(this.listCatalogue);
             this.Controls.Add(this.lblAddress);
             this.Controls.Add(this.txtAddress);
             this.Controls.Add(this.btnFetch);
@@ -139,6 +177,9 @@ namespace Wording.WordApp
 
         #endregion
 
+        private System.Windows.Forms.Label lblCatalogue;
+        private System.Windows.Forms.ListView listCatalogue;
+        private System.Windows.Forms.Button btnReload;
         private System.Windows.Forms.Label lblAddress;
         private System.Windows.Forms.TextBox txtAddress;
         private System.Windows.Forms.Button btnFetch;

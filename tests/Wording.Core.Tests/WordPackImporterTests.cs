@@ -199,6 +199,23 @@ public class WordPackImporterTests
     }
 
     [Fact]
+    public void SetExists_AnswersByIdentifierBeforeAnythingIsDownloaded()
+    {
+        // A catalogue row knows only the identifier, so this is what marks it Installed.
+        using var dir = new TempDirectory();
+        var importer = Importer(dir);
+
+        Assert.False(importer.SetExists("travel-basics"));
+
+        importer.Import(Pack(("airport", "aeropuerto")), Source);
+
+        Assert.True(importer.SetExists("travel-basics"));
+        Assert.True(importer.SetExists("Travel-Basics"));
+        Assert.False(importer.SetExists("../words"));
+        Assert.False(importer.SetExists("never-imported"));
+    }
+
+    [Fact]
     public void Import_WithoutASourceUrlStillWorks()
     {
         // A pack opened from a local file has no address to record.

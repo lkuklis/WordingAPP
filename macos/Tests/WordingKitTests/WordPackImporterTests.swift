@@ -193,6 +193,21 @@ import Testing
         #expect(result.set.kind == PackKind.vocabulary)
     }
 
+    @Test func setExistsAnswersByIdentifierBeforeAnythingIsDownloaded() throws {
+        // A catalogue row knows only the identifier, so this is what marks it Installed.
+        let dir = try TempDirectory()
+        let importer = WordPackImporter(setsDirectory: dir.setsDirectory)
+
+        #expect(!importer.setExists("travel-basics"))
+
+        try importer.import(Self.pack(("airport", "aeropuerto")), from: Self.source, now: Self.now)
+
+        #expect(importer.setExists("travel-basics"))
+        #expect(importer.setExists("Travel-Basics"))
+        #expect(!importer.setExists("../words"))
+        #expect(!importer.setExists("never-imported"))
+    }
+
     @Test func withoutASourceUrlStillWorks() throws {
         // A pack opened from a local file has no address to record.
         let dir = try TempDirectory()

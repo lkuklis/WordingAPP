@@ -32,6 +32,16 @@ public struct WordPackImporter {
         return FileManager.default.fileExists(atPath: url.path(percentEncoded: false))
     }
 
+    /// Whether a set is already on disk, by identifier - for a catalogue row, where the
+    /// pack itself has not been downloaded yet.
+    public func setExists(_ id: String) -> Bool {
+        guard let slug = PackSlug.normalize(id) else { return false }
+
+        let url = WordingPaths.setFile(slug, in: setsDirectory)
+
+        return FileManager.default.fileExists(atPath: url.path(percentEncoded: false))
+    }
+
     /// Imports the pack. With `replaceExisting` false an existing set is refused rather
     /// than overwritten; with it true the pack is merged into that set, which adds the
     /// words it does not have yet and leaves the review progress of the ones it does

@@ -219,6 +219,19 @@ final class AppModel {
         try await downloader.download(from: url)
     }
 
+    /// The published catalogue, and the address it came from - the pack URLs are derived
+    /// from that address, so the two travel together.
+    func downloadCatalogue() async throws -> (index: URL, entries: [PackIndexEntry]) {
+        guard let index = URL(string: PackSource.officialIndexUrl) else {
+            throw WordPackError.malformed("the catalogue address is not a URL")
+        }
+
+        return (index, try await downloader.downloadIndex(from: index))
+    }
+
+    /// Whether a catalogue entry is already on disk, so the list can say so.
+    func haveSet(id: String) -> Bool { importer.setExists(id) }
+
     func alreadyHave(_ pack: WordPack) -> Bool { importer.exists(pack) }
 
     /// How many of the pack's words a set on disk does not have yet.
@@ -235,7 +248,7 @@ final class AppModel {
     }
 
     @discardableResult
-    func importPack(_ pack: WordPack, from url: URL, replaceExisting: Bool) throws -> PackImportResult {
+    func importPack(_ pack: WordPack, from url: URL?, replaceExisting: Bool) throws -> PackImportResult {
         let result = try importer.import(pack, from: url, replaceExisting: replaceExisting)
 
         refresh()

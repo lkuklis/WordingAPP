@@ -3,7 +3,12 @@
 Every file here is a **word pack**: a list of words anyone can import into Wording from a
 URL, under *Learning set → Import from a URL…*.
 
-Copy the raw address of a file and paste it into the app:
+Everything here shows up in the app's own list — *Learning set → Import from a URL…* —
+and a double click downloads it. The list comes from [index.json](index.json), which the
+app fetches when that window opens.
+
+You can still paste an address, which is what the URL box is for once a pack lives
+somewhere other than this repository:
 
 ```
 https://raw.githubusercontent.com/lkuklis/WordingAPP/master/learning_data/spanish-travel.json
@@ -44,9 +49,14 @@ share this format, so a pack has to be storable on both.
 
 ## Contributing a pack
 
-Add a `.json` file here and open a pull request. CI validates every pack in this directory
-with the same parser the app uses, so a file that would be refused on import fails the
-build instead of reaching anyone.
+Add a `.json` file here, run `./build-index.sh` to refresh `index.json`, and open a pull
+request. CI validates every pack in this directory with the same parser the app uses, so a
+file that would be refused on import fails the build instead of reaching anyone — and a
+test compares `index.json` against the files, so a forgotten regeneration fails too.
+
+`index.json` is the only registry in this project: a directory cannot be listed over plain
+HTTP, so the catalogue has to be written down. Nothing reads it but the app, and nothing
+should be edited in it by hand.
 
 Keep one language pair per pack and give it a name that says which direction it goes.
 

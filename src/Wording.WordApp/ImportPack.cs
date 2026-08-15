@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Wording.Core.Packs;
@@ -6,17 +7,22 @@ using Wording.Core.Packs;
 namespace Wording.WordApp;
 
 /// <summary>
-/// Downloads a word pack and shows what it is before any of it is written.
+/// Two ways in: the published catalogue, and any other address.
 /// <para>
-/// The preview step is the point of the dialog. A pack comes from an address the user
-/// pasted, so the first chance to see whose words these are and how many of them there
-/// are should come before they land on disk, not after.
+/// The catalogue is fetched when the window opens, so the list is current; the app makes
+/// no network request until then. Downloading a pack from an address the user pasted
+/// still shows a preview before anything is written, because there is nothing else
+/// vouching for it - the catalogue's packs are validated in CI before they are published,
+/// which is why a double click there imports straight away.
 /// </para>
 /// </summary>
 public partial class ImportPack : Form
 {
     readonly PackDownloader _downloader = new();
     readonly WordPackImporter _importer = new();
+
+    Uri? _indexUrl;
+    IReadOnlyList<PackIndexEntry> _catalogue = [];
 
     WordPack? _pack;
     Uri? _address;
@@ -27,6 +33,111 @@ public partial class ImportPack : Form
     public ImportPack()
     {
         InitializeComponent();
+
+        listCatalogue.Columns.Add("Pack", 250);
+        listCatalogue.Columns.Add("Entries", 70);
+        listCatalogue.Columns.Add("", 110);
+
+        // Fetched when the window opens, so the list is current. This is the app's only
+        // unprompted network request, which is why the label says where it comes from.
+        Shown += async (_, _) => await LoadCatalogueAsync();
+    }
+
+    async void btnReload_Click(object sender, EventArgs e) => await LoadCatalogueAsync();
+
+    async Task LoadCatalogueAsync()
+    {
+        btnReload.Enabled = false;
+        listCatalogue.Items.Clear();
+        Report("Loading the catalogue…");
+
+        try
+        {
+            _indexUrl = new Uri(PackSource.OfficialIndexUrl);
+            _catalogue = await new PackDownloader().DownloadIndexAsync(_indexUrl).ConfigureAwait(true);
+
+            ShowCatalogue();
+            Report(string.Empty);
+        }
+        catch (WordPackException error)
+        {
+            Report("Could not load the catalogue. " + Describe(error));
+        }
+        finally
+        {
+            btnReload.Enabled = true;
+        }
+    }
+
+    void ShowCatalogue()
+    {
+        listCatalogue.BeginUpdate();
+        listCatalogue.Items.Clear();
+
+        foreach (var entry in _catalogue)
+        {
+            var unit = PackKind.IsConcepts(entry.Kind) ? "terms" : "words";
+
+            var row = new ListViewItem(entry.Name);
+            row.SubItems.Add($"{entry.WordCount} {unit}");
+            row.SubItems.Add(_importer.SetExists(entry.Id) ? "Installed" : string.Empty);
+            row.ToolTipText = entry.Description;
+            row.Tag = entry;
+
+            listCatalogue.Items.Add(row);
+        }
+
+        listCatalogue.EndUpdate();
+    }
+
+    async void listCatalogue_DoubleClick(object sender, EventArgs e)
+    {
+        if (listCatalogue.SelectedItems.Count == 0
+            || listCatalogue.SelectedItems[0].Tag is not PackIndexEntry entry
+            || _indexUrl is null)
+        {
+            return;
+        }
+
+        var replaceExisting = _importer.SetExists(entry.Id);
+
+        if (replaceExisting)
+        {
+            var answer = MessageBox.Show(
+                this,
+                $"You already have {entry.Name}.\n\nAdd the entries it does not have yet? "
+                    + "Your review progress on the rest is kept.",
+                "Wording",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question);
+
+            if (answer != DialogResult.Yes)
+            {
+                return;
+            }
+        }
+
+        listCatalogue.Enabled = false;
+        Report($"Downloading {entry.Name}…");
+
+        try
+        {
+            // Built from the entry's identifier and the catalogue's own address, so the
+            // file being downloaded cannot choose where the app looks.
+            var url = PackSource.PackUrl(_indexUrl, entry.Id);
+            var pack = await new PackDownloader().DownloadAsync(url).ConfigureAwait(true);
+
+            Install(pack, url, replaceExisting);
+            ShowCatalogue();
+        }
+        catch (WordPackException error)
+        {
+            Report(Describe(error));
+        }
+        finally
+        {
+            listCatalogue.Enabled = true;
+        }
     }
 
     async void btnFetch_Click(object sender, EventArgs e)
@@ -98,17 +209,24 @@ public partial class ImportPack : Form
             return;
         }
 
+        Install(_pack, _address, _importer.Exists(_pack));
+
+        grpPreview.Visible = false;
+        _pack = null;
+    }
+
+    /// <summary>Shared by the catalogue and the address box - the write is the same.</summary>
+    void Install(WordPack pack, Uri source, bool replaceExisting)
+    {
         try
         {
-            var result = _importer.Import(_pack, _address, replaceExisting: _importer.Exists(_pack));
+            var result = _importer.Import(pack, source, replaceExisting);
 
             ImportedAnything = true;
-            grpPreview.Visible = false;
-            _pack = null;
 
             Report(result.Added == 0
-                ? $"Nothing new to add - you already have every word in {result.Set.Name}."
-                : $"Added {result.Added} words to {result.Set.Name}. Pick it under Learning set to start.");
+                ? $"Nothing new to add - you already have every entry in {result.Set.Name}."
+                : $"Added {result.Added} entries to {result.Set.Name}. Pick it under Learning set to start.");
         }
         catch (WordPackException error)
         {
