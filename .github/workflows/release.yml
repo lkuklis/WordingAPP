@@ -65,7 +65,9 @@ jobs:
         run: |
           mkdir -p dist
           cd dist/publish
-          7z a -tzip "../Wording-$VERSION-win-x64-portable.zip" .
+          # -xr!*.pdb keeps the archive consistent with the installer, which
+          # excludes debug symbols too.
+          7z a -tzip "../Wording-$VERSION-win-x64-portable.zip" . -xr'!*.pdb'
 
       - name: Install Inno Setup
         run: choco install innosetup --no-progress -y
