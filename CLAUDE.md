@@ -51,11 +51,24 @@ What this means in practice:
   `InteropTests`, or the two apps stop reading each other's files.
 - Add a test on one side → add the equivalent on the other, so the counts stay meaningful.
 
-**Verification is asymmetric even when the change is not.** The Swift side can be tested and
-run here; the .NET side can only be compiled and unit-tested from macOS. Report it that way —
-"changed in both, Swift verified by running, WinForms compiles and passes tests but is
-unverified on Windows" — rather than implying both were exercised equally. See *Verification
-lessons worth keeping*.
+**Verification is asymmetric even when the change is not, and which half is verifiable depends
+on the machine you are running on.** Only one port can actually be launched from any given
+host, so the same change lands with two different levels of proof:
+
+| Working on | Can run and verify | Compiles and unit-tests only |
+|---|---|---|
+| macOS | `macos/` (`./build-app.sh && open build/Wording.app`) | `src/` — WinForms needs Windows |
+| Windows | `src/` (`dotnet run` the WinForms app) | `macos/` — Swift needs a Mac |
+
+Both directions are normal and expected. Make the change in both ports either way, then say
+which half you actually exercised: *"changed in both; verified by running on Windows, the Swift
+side compiles and passes `swift test` but is unrun until it is opened on a Mac."* Do not let
+the unverifiable half quietly become the untouched half — deferring the *code* to the other
+machine is how the two ports drift apart, while deferring only the *verification* is fine.
+
+Whichever port you could not run, note it as pending in the reply so the user knows what to
+check when they next switch machines. See *Verification lessons worth keeping* — every bug in
+this project's history came from treating a compile as a run.
 
 ## Layout
 
@@ -129,7 +142,9 @@ swift test --filter InteropTests
 ./build-app.sh && open build/Wording.app     # the only correct way to run the macOS app
 ```
 
-`Wording.WordApp` **compiles** on macOS but cannot run there. Verify WinForms changes by compiling, then run on Windows. There is no WinForms designer on macOS — edit `.Designer.cs` by hand, consistent with the paired `.resx`.
+The commands above assume a Mac. `Wording.WordApp` **compiles** on macOS but cannot run there: verify WinForms changes by compiling, then run them on Windows. There is no WinForms designer on macOS — edit `.Designer.cs` by hand, consistent with the paired `.resx`.
+
+On Windows the restriction runs the other way: `dotnet build` and `dotnet test` cover the whole .NET solution and the app itself runs, but `macos/` cannot be built at all — SwiftPM and the `UserNotifications` framework need a Mac, so Swift changes made there stay unbuilt until someone opens them on one. Neither host can verify the whole product; CI's macOS runner is the closest thing, and it still only *compiles* the WinForms side.
 
 For pure .NET logic work, `dotnet run some.cs` as a file-based app against `Wording.Core` is the fastest loop, and such hosts disable reflection-based JSON, which usefully catches serialization regressions the test project cannot.
 
