@@ -45,10 +45,10 @@ What this means in practice:
 
 - Change `Learning/`, `Storage/`, or the word model in .NET → make the matching change in
   `WordingKit`, and vice versa. These are line-for-line ports.
-- Change the starter word list → both `src/Wording.Core/WordsData.xml` and
-  `macos/Sources/WordingKit/Resources/starter-pack.json`.
-- Change persisted JSON → update `WordJsonContext`, the Swift `Codable` types, and
-  `InteropTests`, or the two apps stop reading each other's files.
+- Change persisted JSON, or the pack format → update `WordJsonContext`, the Swift `Codable`
+  types, and `InteropTests`, or the two apps stop reading each other's files.
+- Change a validation limit or rule → `PackLimits` and `PackSlug` exist in both ports with
+  the same numbers, and a pack accepted by one must be accepted by the other.
 - Add a test on one side → add the equivalent on the other, so the counts stay meaningful.
 
 **Verification is asymmetric even when the change is not, and which half is verifiable depends
@@ -75,8 +75,8 @@ this project's history came from treating a compile as a run.
 - `Wording.slnx` — .NET solution in the `.slnx` XML format (the .NET 10 SDK default). `dotnet new sln --format sln` regenerates a classic `.sln` if an older Visual Studio can't open it.
 - `src/Wording.Core/` — `net10.0`, **deliberately not `-windows`**. All .NET logic: `Learning/` (SM-2, weighted selector), `Storage/` (JSON store, legacy XML importer, paths). Knows nothing about configuration or UI, so it builds and tests on macOS.
 - `src/Wording.WordApp/` — `net10.0-windows` WinForms app, its settings, and the list projection. `Program.Main` is the composition root. `EnableWindowsTargeting` lets it compile on non-Windows hosts.
-- `tests/Wording.Core.Tests/` — xUnit, 125 tests, runs on macOS.
-- `macos/` — SwiftPM package. `WordingKit` (logic port) and `WordingApp` (SwiftUI). 83 tests. No target declares resources, so SwiftPM produces no resource bundle. `build-app.sh` assembles and signs `Wording.app`; `make-dmg.sh` wraps it in a disk image.
+- `tests/Wording.Core.Tests/` — xUnit, 129 tests, runs on macOS.
+- `macos/` — SwiftPM package. `WordingKit` (logic port) and `WordingApp` (SwiftUI). 87 tests. No target declares resources, so SwiftPM produces no resource bundle. `build-app.sh` assembles and signs `Wording.app`; `make-dmg.sh` wraps it in a disk image.
 - `windows/Wording.iss` — Inno Setup script for the Windows installer. Only ever built in CI; it cannot be compiled on macOS.
 - `RELEASING.md` — how a release is cut and which Apple secrets it needs. `LICENSE` — GPL-3.0.
 
@@ -84,7 +84,7 @@ this project's history came from treating a compile as a run.
 
 **One store per process.** `Program.Main` / `AppModel.start()` open one store and hand the same manager to every screen. Pre-migration each .NET screen constructed its own repository, so the add dialog wrote through a different in-memory copy than the main window. Both composition roots are four lines and deliberately have no wrapper type — the store is concrete (`JsonWordStore` / `WordStore`), because a one-implementation interface bought nothing and no test ever substituted it.
 
-**Seeding and migration are triggered from the composition root, not the store constructor.** `JsonWordStore.ImportLegacyIfEmpty` and `WordStore.seedIfEmpty` both refuse to touch a non-empty store, so neither can overwrite review state written by the other app.
+**Migration is triggered from the composition root, not the store constructor.** `JsonWordStore.ImportLegacyIfEmpty` refuses to touch a non-empty store, so it cannot overwrite review state. Nothing is seeded on either platform — see *Data* below.
 
 **Selection is weighted, not gated.** `WordSelector` does *not* filter to words whose `dueUtc` has passed, which is what a conventional SRS would do. This app shows a word every few minutes rather than in review sessions, so due-date gating would leave it with nothing to display. Every word gets a weight — new words highest, overdue ones scaling with lateness (capped at 30 days so one forgotten word can't dominate), and a small non-zero floor so nothing leaves rotation. Measured: words graded known take ~0.2% of impressions but still appear. Tune the constants rather than adding filtering. Both ports implement this identically.
 
@@ -102,6 +102,8 @@ A **pack** is content published at a URL; a **set** is a pack after import, livi
 ```
 
 **An import never writes to `words.json` and never to another set.** That is the whole point: a download cannot disturb what the user is learning from at the time. Re-importing merges — words already present keep their review state, because resetting someone's progress is the one thing an import must never do. Words dropped upstream are *not* deleted locally.
+
+**Deleting every word takes a timestamped copy first**, into a `backups/` subdirectory of whatever file it belongs to. Two details are load-bearing: the stamp (clearing an already-cleared store would otherwise overwrite the useful backup with a copy of nothing), and the *subdirectory* — the set catalogue lists `*.json` directly inside `sets/` and is non-recursive in both ports, so a backup written as a sibling would appear in the UI as a set of its own. A test in each port pins that.
 
 **The installed sets are the directory listing, not a registry file.** A registry has to be kept in step with the disk and stops matching it the moment a file is moved by hand. For the same reason word counts are read from each file rather than stored: a stored count starts lying as soon as a word is deleted.
 

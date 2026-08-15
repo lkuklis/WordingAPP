@@ -23,6 +23,12 @@ public enum WordingPaths {
     /// Imported sets live beside words.json, one file each, never inside it.
     public static let setsFolderName = "sets"
 
+    /// Copies taken before a destructive change, in a subdirectory of whichever file
+    /// they belong to. A subdirectory rather than a sibling file on purpose: the set
+    /// catalogue lists *.json directly inside sets/ and would otherwise show every
+    /// backup as a set of its own.
+    public static let backupsFolderName = "backups"
+
     public static func setsDirectory() -> URL {
         dataDirectory().appending(path: setsFolderName, directoryHint: .isDirectory)
     }

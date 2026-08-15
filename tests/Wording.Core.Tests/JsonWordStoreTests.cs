@@ -216,6 +216,70 @@ public class JsonWordStoreTests
     }
 
     [Fact]
+    public void RemoveAll_EmptiesTheStoreAndKeepsACopy()
+    {
+        using var dir = new TempDirectory();
+        var store = new JsonWordStore(dir.JsonFile, Fixtures.Clock());
+        store.Add("scope", "zakres");
+        store.Add("cater", "zaspokoić");
+
+        var backup = store.RemoveAll();
+
+        Assert.Empty(store.GetAll());
+        Assert.Empty(new JsonWordStore(dir.JsonFile).GetAll());
+
+        Assert.NotNull(backup);
+        Assert.True(File.Exists(backup));
+
+        // The copy is only worth taking if it still holds what was deleted.
+        var saved = new JsonWordStore(backup).GetAll();
+        Assert.Equal(2, saved.Count);
+        Assert.Contains(saved, word => word.Original == "scope");
+    }
+
+    [Fact]
+    public void RemoveAll_OnAnEmptyStoreDoesNothingAndBacksUpNothing()
+    {
+        // Otherwise clearing twice would replace the useful backup with a copy of nothing.
+        using var dir = new TempDirectory();
+        var store = new JsonWordStore(dir.JsonFile, Fixtures.Clock());
+
+        Assert.Null(store.RemoveAll());
+        Assert.False(Directory.Exists(Path.Combine(dir.Path, WordingPaths.BackupsFolderName)));
+    }
+
+    [Fact]
+    public void RemoveAll_PutsTheBackupWhereTheSetCatalogueWillNotSeeIt()
+    {
+        // A backup written beside a set would otherwise be listed as a set of its own.
+        using var dir = new TempDirectory();
+        Directory.CreateDirectory(dir.SetsDirectory);
+
+        var store = new JsonWordStore(dir.SetFile("travel-basics"), Fixtures.Clock());
+        store.Describe(new WordSet { Id = "travel-basics", Name = "Travel basics" });
+        store.Add("airport", "aeropuerto");
+
+        Assert.NotNull(store.RemoveAll());
+
+        var listed = WordSetCatalog.List(dir.SetsDirectory);
+        Assert.Equal("travel-basics", Assert.Single(listed).Id);
+    }
+
+    [Fact]
+    public void RemoveAll_KeepsTheSetHeader()
+    {
+        // Emptying a set does not stop it being that set - the name and source stay.
+        using var dir = new TempDirectory();
+        var store = new JsonWordStore(dir.JsonFile, Fixtures.Clock());
+        store.Describe(new WordSet { Id = "travel-basics", Name = "Travel basics" });
+        store.Add("airport", "aeropuerto");
+
+        store.RemoveAll();
+
+        Assert.Equal("Travel basics", new JsonWordStore(dir.JsonFile).Set?.Name);
+    }
+
+    [Fact]
     public void Save_CreatesTheMissingDirectory()
     {
         using var dir = new TempDirectory();

@@ -112,6 +112,28 @@ final class AppModel {
 
     func remove(id: UUID) {
         _ = try? manager?.removeWord(id: id)
+
+        // The word may be the one the notification is still offering to grade.
+        if lastShown?.id == id { lastShown = nil }
+
+        refresh()
+    }
+
+    /// Deletes every word. The backup taken first is reported, because the whole point
+    /// of it is that the user can find it afterwards.
+    func removeAll() {
+        guard let manager else { return }
+
+        do {
+            if let backup = try manager.removeAllWords() {
+                statusMessage = "Backed up to \(backup.path(percentEncoded: false))"
+            }
+        } catch {
+            statusMessage = "Could not delete the words: \(error.localizedDescription)"
+            return
+        }
+
+        lastShown = nil
         refresh()
     }
 

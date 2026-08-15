@@ -83,6 +83,52 @@ public final class WordStore {
         return true
     }
 
+    /// Deletes every word, after copying the file aside.
+    ///
+    /// The copy is not optional politeness: this throws away review progress that can
+    /// take months to build and that nothing else in the app can reconstruct. Each
+    /// backup is stamped with the time rather than overwriting one fixed name - clearing
+    /// an already-cleared store twice would otherwise replace the useful backup with a
+    /// copy of nothing.
+    ///
+    /// - Returns: the backup's location, or nil when there was nothing to delete.
+    @discardableResult
+    public func removeAll(now: Date = Date()) throws -> URL? {
+        guard !words.isEmpty else { return nil }
+
+        let backup = backupURL(now: now)
+
+        try FileManager.default.createDirectory(
+            at: backup.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+
+        if FileManager.default.fileExists(atPath: backup.path(percentEncoded: false)) {
+            try FileManager.default.removeItem(at: backup)
+        }
+
+        try FileManager.default.copyItem(at: fileURL, to: backup)
+
+        words = []
+        try save()
+
+        return backup
+    }
+
+    private func backupURL(now: Date) -> URL {
+        let stem = fileURL.deletingPathExtension().lastPathComponent
+
+        let stamp = DateFormatter()
+        stamp.dateFormat = "yyyyMMdd-HHmmss"
+        stamp.timeZone = TimeZone(identifier: "UTC")
+        stamp.locale = Locale(identifier: "en_US_POSIX")
+
+        return fileURL
+            .deletingLastPathComponent()
+            .appending(path: WordingPaths.backupsFolderName, directoryHint: .isDirectory)
+            .appending(path: "\(stem)-\(stamp.string(from: now)).json", directoryHint: .notDirectory)
+    }
+
     /// Persists changes to a word already in the store (for example after grading).
     @discardableResult
     public func update(_ word: Word) throws -> Bool {

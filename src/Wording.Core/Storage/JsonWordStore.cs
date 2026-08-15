@@ -137,6 +137,47 @@ public sealed class JsonWordStore
         return true;
     }
 
+    /// <summary>
+    /// Deletes every word, after copying the file aside.
+    /// <para>
+    /// The copy is not optional politeness: this throws away review progress that can
+    /// take months to build and that nothing else in the app can reconstruct. Each
+    /// backup is stamped with the time rather than overwriting one fixed name - clearing
+    /// an already-cleared store twice would otherwise replace the useful backup with a
+    /// copy of nothing.
+    /// </para>
+    /// </summary>
+    /// <returns>Path of the backup, or null when there was nothing to delete.</returns>
+    public string? RemoveAll()
+    {
+        if (_words.Count == 0)
+        {
+            return null;
+        }
+
+        var backup = BackupPath();
+
+        Directory.CreateDirectory(System.IO.Path.GetDirectoryName(backup)!);
+        File.Copy(_path, backup, overwrite: true);
+
+        _words = [];
+        Save();
+
+        return backup;
+    }
+
+    string BackupPath()
+    {
+        var directory = System.IO.Path.GetDirectoryName(_path) ?? ".";
+        var stem = System.IO.Path.GetFileNameWithoutExtension(_path);
+        var stamp = _clock.GetUtcNow().ToString("yyyyMMdd-HHmmss", System.Globalization.CultureInfo.InvariantCulture);
+
+        return System.IO.Path.Combine(
+            directory,
+            WordingPaths.BackupsFolderName,
+            $"{stem}-{stamp}.json");
+    }
+
     /// <summary>Persists changes to a word already in the store (for example after grading).</summary>
     public bool Update(Word word)
     {

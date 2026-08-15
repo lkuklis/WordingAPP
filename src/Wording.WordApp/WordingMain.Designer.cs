@@ -30,6 +30,7 @@
         {
             this.dataGridWords = new System.Windows.Forms.DataGridView();
             this.btnAddNewWord = new System.Windows.Forms.Button();
+            this.btnDeleteAll = new System.Windows.Forms.Button();
             this.lblEmpty = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.dataGridWords)).BeginInit();
             this.SuspendLayout();
@@ -53,6 +54,16 @@
             this.btnAddNewWord.UseVisualStyleBackColor = true;
             this.btnAddNewWord.Click += new System.EventHandler(this.btnAddNewWord_Click);
             //
+            // btnDeleteAll
+            //
+            this.btnDeleteAll.Location = new System.Drawing.Point(12, 431);
+            this.btnDeleteAll.Name = "btnDeleteAll";
+            this.btnDeleteAll.Size = new System.Drawing.Size(90, 23);
+            this.btnDeleteAll.TabIndex = 3;
+            this.btnDeleteAll.Text = "Delete all…";
+            this.btnDeleteAll.UseVisualStyleBackColor = true;
+            this.btnDeleteAll.Click += new System.EventHandler(this.btnDeleteAll_Click);
+            //
             // lblEmpty
             //
             // Shown over the empty grid on a first run - nothing is seeded any more, so
@@ -73,6 +84,7 @@
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(548, 460);
             this.Controls.Add(this.btnAddNewWord);
+            this.Controls.Add(this.btnDeleteAll);
             // lblEmpty is added before the grid so it sits in front of it.
             this.Controls.Add(this.lblEmpty);
             this.Controls.Add(this.dataGridWords);
@@ -90,6 +102,7 @@
 
         private System.Windows.Forms.DataGridView dataGridWords;
         private System.Windows.Forms.Button btnAddNewWord;
+        private System.Windows.Forms.Button btnDeleteAll;
         private System.Windows.Forms.Label lblEmpty;
     }
 }

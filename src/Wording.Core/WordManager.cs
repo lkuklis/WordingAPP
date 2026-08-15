@@ -50,6 +50,10 @@ public sealed class WordManager
 
     public bool RemoveWord(Guid id) => _store.Remove(id);
 
+    /// <summary>Deletes every word, keeping a copy of the file first.</summary>
+    /// <returns>Path of the backup, or null when there was nothing to delete.</returns>
+    public string? RemoveAllWords() => _store.RemoveAll();
+
     /// <summary>The word that should go into the notification now. Null when the list is empty.</summary>
     public Word? NextWordToShow() =>
         WordSelector.PickNext(_store.GetAll(), _clock.GetUtcNow(), _random);

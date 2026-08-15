@@ -32,6 +32,13 @@ public final class WordManager {
         try store.remove(id: id)
     }
 
+    /// Deletes every word, keeping a copy of the file first.
+    /// - Returns: the backup's location, or nil when there was nothing to delete.
+    @discardableResult
+    public func removeAllWords(now: Date = Date()) throws -> URL? {
+        try store.removeAll(now: now)
+    }
+
     /// The word that should go into the notification now.
     public func nextWordToShow(now: Date = Date()) -> Word? {
         WordSelector.pickNext(from: store.words, now: now)

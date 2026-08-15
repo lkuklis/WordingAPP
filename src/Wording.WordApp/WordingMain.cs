@@ -193,9 +193,55 @@ public partial class WordingMain : Form
 
     void dataGridWords_RowsRemoved(object sender, DataGridViewRowCancelEventArgs e)
     {
-        if (e.Row?.DataBoundItem is WordRow row)
+        if (e.Row?.DataBoundItem is not WordRow row)
         {
-            _manager.RemoveWord(row.Id);
+            return;
+        }
+
+        _manager.RemoveWord(row.Id);
+
+        // The grid moves the current row on by itself, so deleting a run of words takes
+        // one keypress each. Only the empty-state label needs catching up, and it has to
+        // wait until the row has actually gone - this event fires before that.
+        BeginInvoke(() => lblEmpty.Visible = dataGridWords.Rows.Count == 0);
+
+        if (_lastShown?.Id == row.Id)
+        {
+            _lastShown = null;
+        }
+    }
+
+    void btnDeleteAll_Click(object sender, EventArgs e)
+    {
+        var count = _manager.GetWords().Count;
+
+        if (count == 0)
+        {
+            return;
+        }
+
+        var answer = MessageBox.Show(
+            this,
+            $"Delete all {count} words?\n\nTheir review progress goes with them. A copy of the "
+                + "file is saved to the backups folder first, so this can still be undone by hand.",
+            "Wording",
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Warning,
+            MessageBoxDefaultButton.Button2);
+
+        if (answer != DialogResult.Yes)
+        {
+            return;
+        }
+
+        var backup = _manager.RemoveAllWords();
+        _lastShown = null;
+
+        RefreshGrid();
+
+        if (backup is not null)
+        {
+            MessageBox.Show(this, $"Backed up to:\n{backup}", "Wording", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
     }
 }

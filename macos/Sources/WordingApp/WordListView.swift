@@ -7,6 +7,7 @@ struct WordListView: View {
     @State private var original = ""
     @State private var translation = ""
     @State private var selection: Word.ID?
+    @State private var confirmingDeleteAll = false
 
     var body: some View {
         VStack(spacing: 12) {
@@ -44,9 +45,7 @@ struct WordListView: View {
                     Button(grade.buttonTitle) { self.grade(grade) }
                 }
 
-                Button("Delete", role: .destructive) {
-                    if let selection { model.remove(id: selection) }
-                }
+                Button("Delete", role: .destructive, action: deleteSelected)
 
                 Spacer()
             }
@@ -64,10 +63,43 @@ struct WordListView: View {
                 }
 
                 Spacer()
+
+                Button("Delete all…", role: .destructive) { confirmingDeleteAll = true }
+                    .disabled(model.words.isEmpty)
             }
         }
         .padding(16)
         .task { model.refresh() }
+        .confirmationDialog(
+            "Delete all \(model.words.count) words?",
+            isPresented: $confirmingDeleteAll,
+            titleVisibility: .visible
+        ) {
+            Button("Delete all", role: .destructive) {
+                model.removeAll()
+                selection = nil
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Their review progress goes with them. A copy of the file is saved to the backups folder first, so this can still be undone by hand.")
+        }
+    }
+
+    /// Moves the selection onto the neighbour, so a run of deletions needs one click
+    /// each instead of a click and a re-selection.
+    private func deleteSelected() {
+        guard let selection,
+            let index = model.words.firstIndex(where: { $0.id == selection })
+        else { return }
+
+        model.remove(id: selection)
+
+        // The row that slid into this index is the following word; past the end of the
+        // list, fall back to the new last one.
+        self.selection =
+            model.words.indices.contains(index)
+            ? model.words[index].id
+            : model.words.last?.id
     }
 
     private func add() {

@@ -44,6 +44,14 @@ public static class WordingPaths
     /// <summary>Imported sets live beside words.json, one file each, never inside it.</summary>
     public const string SetsFolderName = "sets";
 
+    /// <summary>
+    /// Copies taken before a destructive change, in a subdirectory of whichever file
+    /// they belong to. A subdirectory rather than a sibling file on purpose: the set
+    /// catalogue lists *.json directly inside sets/ and would otherwise show every
+    /// backup as a set of its own.
+    /// </summary>
+    public const string BackupsFolderName = "backups";
+
     public static string SetsDirectory() => Path.Combine(DataDirectory(), SetsFolderName);
 
     /// <summary>
