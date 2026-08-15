@@ -9,13 +9,15 @@ namespace Wording.Desktop;
 public partial class MainWindow : Window
 {
     readonly WordManager _manager;
+    readonly string _opisPowiadomien;
     readonly ObservableCollection<WordRow> _wiersze = [];
 
-    public MainWindow(WordManager manager)
+    public MainWindow(WordManager manager, string opisPowiadomien)
     {
         ArgumentNullException.ThrowIfNull(manager);
 
         _manager = manager;
+        _opisPowiadomien = opisPowiadomien;
 
         InitializeComponent();
 
@@ -63,7 +65,9 @@ public partial class MainWindow : Window
             WordsList.SelectedItem = _wiersze.FirstOrDefault(wiersz => wiersz.Id == id);
         }
 
-        StatusText.Text = $"{_wiersze.Count} words  ·  {_manager.GetWords().Count(w => w.Review.DueUtc <= teraz)} due now";
+        StatusText.Text = $"{_wiersze.Count} words  ·  "
+            + $"{_manager.GetWords().Count(w => w.Review.DueUtc <= teraz)} due now  ·  "
+            + $"notifications: {_opisPowiadomien}";
     }
 
     public void PokazIAktywuj()

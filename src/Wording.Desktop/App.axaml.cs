@@ -36,7 +36,13 @@ public partial class App : Application
             _host = WordingHost.Create();
             _notifier = OperatingSystem.IsMacOS() ? new MacNotifier() : new NullNotifier();
 
-            _okno = new MainWindow(_host.Manager);
+            var opisPowiadomien = _notifier switch
+            {
+                MacNotifier mac => mac.Strategy,
+                _ => "brak na tym systemie",
+            };
+
+            _okno = new MainWindow(_host.Manager, opisPowiadomien);
             desktop.MainWindow = _okno;
             _okno.Show();
 
