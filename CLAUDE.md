@@ -75,9 +75,10 @@ this project's history came from treating a compile as a run.
 - `Wording.slnx` — .NET solution in the `.slnx` XML format (the .NET 10 SDK default). `dotnet new sln --format sln` regenerates a classic `.sln` if an older Visual Studio can't open it.
 - `src/Wording.Core/` — `net10.0`, **deliberately not `-windows`**. All .NET logic: `Learning/` (SM-2, weighted selector), `Storage/` (JSON store, legacy XML importer, paths). Knows nothing about configuration or UI, so it builds and tests on macOS.
 - `src/Wording.WordApp/` — `net10.0-windows` WinForms app, its settings, and the list projection. `Program.Main` is the composition root. `EnableWindowsTargeting` lets it compile on non-Windows hosts.
-- `tests/Wording.Core.Tests/` — xUnit, 129 tests, runs on macOS.
-- `macos/` — SwiftPM package. `WordingKit` (logic port) and `WordingApp` (SwiftUI). 87 tests. No target declares resources, so SwiftPM produces no resource bundle. `build-app.sh` assembles and signs `Wording.app`; `make-dmg.sh` wraps it in a disk image.
+- `tests/Wording.Core.Tests/` — xUnit, 140 tests, runs on macOS.
+- `macos/` — SwiftPM package. `WordingKit` (logic port) and `WordingApp` (SwiftUI). 94 tests. No target declares resources, so SwiftPM produces no resource bundle. `build-app.sh` assembles and signs `Wording.app`; `make-dmg.sh` wraps it in a disk image.
 - `windows/Wording.iss` — Inno Setup script for the Windows installer. Only ever built in CI; it cannot be compiled on macOS.
+- `learning_data/` — published word packs, one JSON each, validated by both test suites.
 - `RELEASING.md` — how a release is cut and which Apple secrets it needs. `LICENSE` — GPL-3.0.
 
 ## Architecture
@@ -104,6 +105,10 @@ A **pack** is content published at a URL; a **set** is a pack after import, livi
 **An import never writes to `words.json` and never to another set.** That is the whole point: a download cannot disturb what the user is learning from at the time. Re-importing merges — words already present keep their review state, because resetting someone's progress is the one thing an import must never do. Words dropped upstream are *not* deleted locally.
 
 **Deleting every word takes a timestamped copy first**, into a `backups/` subdirectory of whatever file it belongs to. Two details are load-bearing: the stamp (clearing an already-cleared store would otherwise overwrite the useful backup with a copy of nothing), and the *subdirectory* — the set catalogue lists `*.json` directly inside `sets/` and is non-recursive in both ports, so a backup written as a sibling would appear in the UI as a set of its own. A test in each port pins that.
+
+**One *active* store per process, and switching goes through the composition root.** `AppModel.switchTo(setId:)` / `WordingMain.SwitchTo` are the only places that replace the store, and both **clear the pending grade**: `lastShown` holds a word from the set being closed, so a grade applied after the switch would either miss or land on an unrelated word. The choice is remembered per platform — `UserDefaults` on macOS, a one-line `active-set.txt` in the data directory on Windows, since WinForms has nothing writable. `WordSetCatalog.ResolveActiveFile` falls back to the user's own words when the remembered set has been deleted or its id is not a safe slug; refusing to start because a remembered set is gone would leave the user with an app that will not open.
+
+**`learning_data/` publishes packs, and both test suites validate every file in it** with the same parser the app uses, locating the directory from the test's own source path (`[CallerFilePath]` / `#filePath`) rather than the working directory. Contributions come from strangers, so a pack that would be refused on import has to fail the build instead. Each suite also asserts the directory was found — an empty theory would otherwise pass while checking nothing.
 
 **The installed sets are the directory listing, not a registry file.** A registry has to be kept in step with the disk and stops matching it the moment a file is moved by hand. For the same reason word counts are read from each file rather than stored: a stored count starts lying as soon as a word is deleted.
 
@@ -236,7 +241,6 @@ that guarded it. CI now checks the executable and `CFBundleIdentifier` instead.
 
 ## Known gaps
 
-- **Word packs have no UI yet.** The format, validation, download and import are done and tested in both ports; nothing calls them. Still to build: choosing the active set (one at a time — switching must go through the composition root and clear `lastShown`, or a grade would land on a word from the set that is no longer open), an import screen showing the pack name before it is written, and `learning_data/` in the repository with a CI validator using this same parser.
 - **The Windows app has never been run**, only compiled. Its tray menu, grading, and grid are unverified.
 - **Windows notifications are still `ShowBalloonTip`**, which Windows 10+ reroutes to the toast system while ignoring the timeout, and which has no action buttons. Windows App SDK toasts (needing COM activator registration for unpackaged apps) are the equivalent of what the Swift app already does.
 - **The Swift app has no quiet hours**, only a pause and an interval picker (5 s – 1 h, default 30 s). The .NET app has neither and reads its interval from `appsettings.json`.
