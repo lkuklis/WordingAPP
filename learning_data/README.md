@@ -49,6 +49,9 @@ build instead of reaching anyone.
 
 Keep one language pair per pack and give it a name that says which direction it goes.
 
+A pack does not have to be vocabulary. The two sides are just short texts, so terms and
+their definitions work as well — see [it-interview-concepts.json](it-interview-concepts.json).
+
 **[PROMPT.md](PROMPT.md) has a ready prompt for generating one with an AI.** It carries the
 limits above verbatim, so a model that follows it produces a file that imports cleanly;
 a test fails if the prompt and the validator ever drift apart.

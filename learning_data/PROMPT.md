@@ -68,6 +68,35 @@ code fence.
 
 ---
 
+## Packs that are not vocabulary
+
+Nothing in the format says the two sides have to be a word and its translation. A pack is a
+pair of short texts, so the same file works for terms and their definitions — interview
+preparation, a certification syllabus, anything you would otherwise put on flashcards. See
+[it-interview-concepts.json](it-interview-concepts.json).
+
+The app labels the columns *Word* and *Translation* either way, which reads a little oddly
+for concepts. That is the only thing you give up.
+
+Use the prompt above with these changes:
+
+````text
+Instead of a translation, "translation" holds a short answer or definition for the term in
+"original".
+
+Keep every answer under about 120 characters. This is not the technical limit - it is the
+one that matters. The answer appears in a notification body, which truncates after two or
+three lines, and short items are recalled far better than long ones. If a concept will not
+fit, it is really two concepts: split it into separate entries rather than writing more.
+
+Write the answer so it stands on its own, without referring to another entry.
+
+Prefer the distinguishing fact over the textbook opening. "Doing it twice has the same
+effect as doing it once" beats "Idempotency is a property of certain operations whereby...".
+
+Do not put the term itself inside its own answer - it turns the card into a giveaway.
+````
+
 ## Checking it before you open a pull request
 
 Save the file as `<id>.json` — **the file name has to match the `id` inside it**, or the

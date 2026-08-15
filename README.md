@@ -48,7 +48,7 @@ Requires the .NET 10 SDK; the macOS app additionally needs Xcode command line to
 
 ```bash
 dotnet build Wording.slnx        # Windows app and shared logic
-dotnet test                      # 142 tests
+dotnet test                      # 144 tests
 
 cd macos
 swift test                       # 96 tests
