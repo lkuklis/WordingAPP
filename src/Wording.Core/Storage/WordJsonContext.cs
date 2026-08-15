@@ -17,4 +17,5 @@ namespace Wording.Core.Storage;
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
 [JsonSerializable(typeof(WordFile))]
 [JsonSerializable(typeof(Packs.WordPack))]
+[JsonSerializable(typeof(Packs.PackIndex))]
 internal sealed partial class WordJsonContext : JsonSerializerContext;

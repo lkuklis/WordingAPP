@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "packs": [
+    {
+      "id": "english-polish-general",
+      "name": "English → Polish, general",
+      "kind": "vocabulary",
+      "wordCount": 38,
+      "description": "The words Wording originally shipped with: everyday and technical English with Polish translations."
+    },
+    {
+      "id": "it-interview-concepts",
+      "name": "Backend interview concepts",
+      "kind": "concepts",
+      "wordCount": 44,
+      "description": "Terms that come up in backend and system design interviews, one short answer each."
+    },
+    {
+      "id": "spanish-travel",
+      "name": "English → Spanish, travel",
+      "kind": "vocabulary",
+      "wordCount": 25,
+      "description": "Words you need in an airport, a station and a hotel."
+    }
+  ]
+}

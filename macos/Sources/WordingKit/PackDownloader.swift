@@ -18,6 +18,17 @@ public struct PackDownloader: Sendable {
     }
 
     public func download(from url: URL) async throws -> WordPack {
+        try WordPackReader.read(try await fetch(url))
+    }
+
+    /// Fetches the published catalogue. Same transport and the same rules as a pack: it
+    /// is one more file from the internet, and being the one we publish ourselves is not
+    /// a reason to check it less.
+    public func downloadIndex(from url: URL) async throws -> [PackIndexEntry] {
+        try PackIndexReader.read(try await fetch(url))
+    }
+
+    private func fetch(_ url: URL) async throws -> Data {
         try requireHTTPS(url)
 
         let data: Data
@@ -44,7 +55,7 @@ public struct PackDownloader: Sendable {
 
         guard data.count <= PackLimits.maxPayloadBytes else { throw WordPackError.tooLarge }
 
-        return try WordPackReader.read(data)
+        return data
     }
 
     private func requireHTTPS(_ url: URL) throws {

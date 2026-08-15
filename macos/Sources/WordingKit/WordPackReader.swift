@@ -30,7 +30,7 @@ public enum WordPackReader {
     /// packs can be checked without going through a download.
     public static func validate(_ pack: WordPack) throws -> WordPack {
         let slug = try PackSlug.require(pack.id)
-        let name = clean(pack.name)
+        let name = PackText.clean(pack.name)
 
         guard !name.isEmpty else { throw WordPackError.malformed("the pack has no name") }
         guard pack.words.count <= PackLimits.maxWords else { throw WordPackError.tooLarge }
@@ -39,8 +39,8 @@ public enum WordPackReader {
         entries.reserveCapacity(pack.words.count)
 
         for entry in pack.words {
-            let original = clean(entry.original)
-            let translation = clean(entry.translation)
+            let original = PackText.clean(entry.original)
+            let translation = PackText.clean(entry.translation)
 
             // A blank line in a hand-edited pack is noise, not a reason to refuse the
             // rest of it.
@@ -60,27 +60,15 @@ public enum WordPackReader {
 
         guard !entries.isEmpty else { throw WordPackError.empty }
 
-        let description = truncate(clean(pack.description ?? ""), to: PackLimits.maxDescriptionLength)
+        let description = PackText.truncate(PackText.clean(pack.description ?? ""), to: PackLimits.maxDescriptionLength)
 
         return WordPack(
             id: slug,
-            name: truncate(name, to: PackLimits.maxNameLength),
+            name: PackText.truncate(name, to: PackLimits.maxNameLength),
             description: description.isEmpty ? nil : description,
             kind: PackKind.normalize(pack.kind),
             words: entries
         )
     }
 
-    /// Trims, and folds every control character - newlines and tabs included - into a
-    /// space. They would otherwise reach a notification body and a list row.
-    private static func clean(_ value: String) -> String {
-        String(value.map { $0.isNewline || $0.unicodeScalars.allSatisfy(CharacterSet.controlCharacters.contains) ? " " : $0 })
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    private static func truncate(_ value: String, to limit: Int) -> String {
-        guard value.count > limit else { return value }
-
-        return String(value.prefix(limit)).trimmingCharacters(in: .whitespaces)
-    }
 }

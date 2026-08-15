@@ -13,11 +13,19 @@ namespace Wording.Core.Tests;
 /// </summary>
 public class PublishedPackTests
 {
+    public const string IndexFileName = "index.json";
+
+    /// <summary>Every pack in the directory. The catalogue itself is not one.</summary>
+    static IEnumerable<string> PackFiles() =>
+        Directory.EnumerateFiles(Directory_(), "*.json")
+            .Where(path => Path.GetFileName(path) != IndexFileName)
+            .OrderBy(path => path, StringComparer.Ordinal);
+
     public static TheoryData<string> PublishedPacks()
     {
         var data = new TheoryData<string>();
 
-        foreach (var path in Directory.EnumerateFiles(Directory_(), "*.json"))
+        foreach (var path in PackFiles())
         {
             data.Add(path);
         }
@@ -30,7 +38,47 @@ public class PublishedPackTests
     {
         // Otherwise an empty theory would pass while checking nothing at all.
         Assert.True(Directory.Exists(Directory_()), $"could not find {Directory_()}");
-        Assert.NotEmpty(Directory.EnumerateFiles(Directory_(), "*.json"));
+        Assert.NotEmpty(PackFiles());
+    }
+
+    [Fact]
+    public void TheCatalogueMatchesThePacksOnDisk()
+    {
+        // The index is the one registry in this app, forced by the fact that a directory
+        // cannot be listed over HTTP - so it is also the one thing that can silently stop
+        // matching reality. Run learning_data/build-index.sh after changing a pack.
+        var index = PackIndexReader.Read(File.ReadAllBytes(Path.Combine(Directory_(), IndexFileName)));
+
+        var onDisk = PackFiles()
+            .Select(path => WordPackReader.Read(File.ReadAllBytes(path)))
+            .ToDictionary(pack => pack.Id, StringComparer.Ordinal);
+
+        Assert.Equal(
+            onDisk.Keys.OrderBy(id => id, StringComparer.Ordinal),
+            index.Select(entry => entry.Id).OrderBy(id => id, StringComparer.Ordinal));
+
+        foreach (var entry in index)
+        {
+            var pack = onDisk[entry.Id];
+
+            Assert.Equal(pack.Name, entry.Name);
+            Assert.Equal(PackKind.Normalize(pack.Kind), entry.Kind);
+            Assert.Equal(pack.Words.Count, entry.WordCount);
+            Assert.Equal(pack.Description, entry.Description);
+        }
+    }
+
+    [Fact]
+    public void TheOfficialCatalogueAddressPointsAtThisDirectory()
+    {
+        var index = new Uri(PackSource.OfficialIndexUrl);
+
+        Assert.EndsWith($"/learning_data/{IndexFileName}", index.AbsolutePath, StringComparison.Ordinal);
+
+        // And a pack address is derived from it, never taken from the file.
+        Assert.Equal(
+            "https://raw.githubusercontent.com/lkuklis/WordingAPP/master/learning_data/spanish-travel.json",
+            PackSource.PackUrl(index, "spanish-travel").ToString());
     }
 
     [Theory]
@@ -87,6 +135,7 @@ public class PublishedPackTests
         Assert.Equal(80, PackLimits.MaxNameLength);
         Assert.Equal(300, PackLimits.MaxDescriptionLength);
         Assert.Equal(64, PackLimits.MaxIdLength);
+        Assert.Equal(500, PackLimits.MaxIndexEntries);
     }
 
     /// <summary>

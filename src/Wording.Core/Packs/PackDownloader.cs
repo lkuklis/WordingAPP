@@ -20,7 +20,20 @@ public sealed class PackDownloader
         _client = client ?? new HttpClient { Timeout = PackLimits.DownloadTimeout };
     }
 
-    public async Task<WordPack> DownloadAsync(Uri url, CancellationToken cancellationToken = default)
+    public async Task<WordPack> DownloadAsync(Uri url, CancellationToken cancellationToken = default) =>
+        WordPackReader.Read(await FetchAsync(url, cancellationToken).ConfigureAwait(false));
+
+    /// <summary>
+    /// Fetches the published catalogue. Same transport and the same rules as a pack: it
+    /// is one more file from the internet, and being the one we publish ourselves is not
+    /// a reason to check it less.
+    /// </summary>
+    public async Task<IReadOnlyList<PackIndexEntry>> DownloadIndexAsync(
+        Uri url,
+        CancellationToken cancellationToken = default) =>
+        PackIndexReader.Read(await FetchAsync(url, cancellationToken).ConfigureAwait(false));
+
+    async Task<byte[]> FetchAsync(Uri url, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(url);
         RequireHttps(url);
@@ -63,9 +76,7 @@ public sealed class PackDownloader
                     $"{url} declares {response.Content.Headers.ContentLength} bytes");
             }
 
-            var payload = await ReadCappedAsync(response, url, cancellationToken).ConfigureAwait(false);
-
-            return WordPackReader.Read(payload);
+            return await ReadCappedAsync(response, url, cancellationToken).ConfigureAwait(false);
         }
     }
 

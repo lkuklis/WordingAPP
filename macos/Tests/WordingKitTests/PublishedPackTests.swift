@@ -21,11 +21,52 @@ import Testing
             .appending(path: "learning_data", directoryHint: .isDirectory)
     }
 
+    static let indexFileName = "index.json"
+
+    /// Every pack in the directory. The catalogue itself is not one.
     static func published() throws -> [URL] {
         try FileManager.default
             .contentsOfDirectory(at: directory(), includingPropertiesForKeys: nil)
-            .filter { $0.pathExtension == "json" }
+            .filter { $0.pathExtension == "json" && $0.lastPathComponent != indexFileName }
             .sorted { $0.lastPathComponent < $1.lastPathComponent }
+    }
+
+    @Test func theCatalogueMatchesThePacksOnDisk() throws {
+        // The index is the one registry in this app, forced by the fact that a directory
+        // cannot be listed over HTTP - so it is also the one thing that can silently stop
+        // matching reality. Run learning_data/build-index.sh after changing a pack.
+        let index = try PackIndexReader.read(
+            try Data(contentsOf: Self.directory().appending(path: Self.indexFileName)))
+
+        var onDisk: [String: WordPack] = [:]
+
+        for file in try Self.published() {
+            let pack = try WordPackReader.read(try Data(contentsOf: file))
+            onDisk[pack.id] = pack
+        }
+
+        #expect(index.map(\.id).sorted() == onDisk.keys.sorted())
+
+        for entry in index {
+            let pack = try #require(onDisk[entry.id], "\(entry.id) is listed but not on disk")
+
+            #expect(entry.name == pack.name)
+            #expect(entry.kind == PackKind.normalize(pack.kind))
+            #expect(entry.wordCount == pack.words.count)
+            #expect(entry.description == pack.description)
+        }
+    }
+
+    @Test func theOfficialCatalogueAddressPointsAtThisDirectory() throws {
+        let index = try #require(URL(string: PackSource.officialIndexUrl))
+
+        #expect(index.path().hasSuffix("/learning_data/\(Self.indexFileName)"))
+
+        // And a pack address is derived from it, never taken from the file.
+        #expect(
+            try PackSource.packURL(index: index, id: "spanish-travel").absoluteString
+                == "https://raw.githubusercontent.com/lkuklis/WordingAPP/master/learning_data/spanish-travel.json"
+        )
     }
 
     @Test func theDirectoryIsWhereItIsExpected() throws {
@@ -72,6 +113,7 @@ import Testing
         #expect(PackLimits.maxNameLength == 80)
         #expect(PackLimits.maxDescriptionLength == 300)
         #expect(PackLimits.maxIdLength == 64)
+        #expect(PackLimits.maxIndexEntries == 500)
     }
 
     @Test func noPublishedPackRepeatsAWord() throws {

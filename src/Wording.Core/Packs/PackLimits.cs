@@ -25,5 +25,9 @@ public static class PackLimits
 
     public const int MaxIdLength = 64;
 
+    /// <summary>Rows kept from the published catalogue. The payload cap alone would
+    /// allow tens of thousands of tiny entries, which is a list nobody can use.</summary>
+    public const int MaxIndexEntries = 500;
+
     public static readonly TimeSpan DownloadTimeout = TimeSpan.FromSeconds(30);
 }

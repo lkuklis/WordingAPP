@@ -55,7 +55,7 @@ public static class WordPackReader
         ArgumentNullException.ThrowIfNull(pack);
 
         var slug = PackSlug.Require(pack.Id);
-        var name = Clean(pack.Name);
+        var name = Text.Clean(pack.Name);
 
         if (name.Length == 0)
         {
@@ -73,8 +73,8 @@ public static class WordPackReader
 
         foreach (var entry in pack.Words)
         {
-            var original = Clean(entry.Original);
-            var translation = Clean(entry.Translation);
+            var original = Text.Clean(entry.Original);
+            var translation = Text.Clean(entry.Translation);
 
             // A blank line in a hand-edited pack is noise, not a reason to refuse the
             // rest of it.
@@ -103,38 +103,14 @@ public static class WordPackReader
         return new WordPack
         {
             Id = slug,
-            Name = Truncate(name, PackLimits.MaxNameLength),
+            Name = Text.Truncate(name, PackLimits.MaxNameLength),
             Kind = PackKind.Normalize(pack.Kind),
-            Description = Truncate(Clean(pack.Description ?? string.Empty), PackLimits.MaxDescriptionLength) is { Length: > 0 } text
+            Description = Text.Truncate(Text.Clean(pack.Description ?? string.Empty), PackLimits.MaxDescriptionLength) is { Length: > 0 } text
                 ? text
                 : null,
             Words = entries,
         };
     }
 
-    /// <summary>
-    /// Trims, and folds every control character - newlines and tabs included - into a
-    /// space. They would otherwise reach a notification body and a grid cell.
-    /// </summary>
-    static string Clean(string value)
-    {
-        if (string.IsNullOrEmpty(value))
-        {
-            return string.Empty;
-        }
-
-        var characters = new char[value.Length];
-
-        for (var i = 0; i < value.Length; i++)
-        {
-            characters[i] = char.IsControl(value[i]) ? ' ' : value[i];
-        }
-
-        return new string(characters).Trim();
-    }
-
-    static string Truncate(string value, int limit) =>
-        value.Length <= limit ? value : value[..limit].TrimEnd();
-
-    static string Preview(string value) => Truncate(value, 40);
+    static string Preview(string value) => Text.Truncate(value, 40);
 }

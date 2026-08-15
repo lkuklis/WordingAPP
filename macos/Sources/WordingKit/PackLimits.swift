@@ -21,5 +21,9 @@ public enum PackLimits {
 
     public static let maxIdLength = 64
 
+    /// Rows kept from the published catalogue. The payload cap alone would allow tens
+    /// of thousands of tiny entries, which is a list nobody can use.
+    public static let maxIndexEntries = 500
+
     public static let downloadTimeout: TimeInterval = 30
 }
