@@ -3,7 +3,6 @@ using System.Linq;
 using System.Windows.Forms;
 using Wording.Core;
 using Wording.Core.Learning;
-using Wording.Shell;
 using Wording.WordApp.Properties;
 
 namespace Wording.WordApp;

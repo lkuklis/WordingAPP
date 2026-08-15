@@ -50,6 +50,12 @@ final class AppModel {
 
         do {
             let store = try WordStore()
+
+            // Pierwsze uruchomienie na czystej maszynie - zasiewamy pakietem
+            // startowym. Gdy plik juz istnieje (np. zapisany przez powloke
+            // .NET), nic sie nie dzieje.
+            try store.seedIfEmpty()
+
             manager = WordManager(store: store)
             refresh()
         } catch {
@@ -106,7 +112,7 @@ final class AppModel {
     }
 
     func remove(id: UUID) {
-        try? manager?.removeWord(id: id)
+        _ = try? manager?.removeWord(id: id)
         refresh()
     }
 

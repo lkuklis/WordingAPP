@@ -1,6 +1,5 @@
 using System;
 using System.Windows.Forms;
-using Wording.Shell;
 
 namespace Wording.WordApp;
 

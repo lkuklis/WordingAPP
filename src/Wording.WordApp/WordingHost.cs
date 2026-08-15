@@ -1,7 +1,7 @@
 using Wording.Core;
 using Wording.Core.Storage;
 
-namespace Wording.Shell;
+namespace Wording.WordApp;
 
 /// <summary>
 /// Punkt kompozycji wspolny dla wszystkich powlok UI.

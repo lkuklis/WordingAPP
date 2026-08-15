@@ -9,8 +9,11 @@ let package = Package(
     ],
     targets: [
         // Logika: port Wording.Core. Czyta i zapisuje dokladnie ten sam
-        // words.json, co powloki .NET - format jest kontraktem miedzy nimi.
-        .target(name: "WordingKit"),
+        // words.json, co powloka .NET - format jest kontraktem miedzy nimi.
+        .target(
+            name: "WordingKit",
+            resources: [.process("Resources")]
+        ),
 
         .executableTarget(
             name: "WordingApp",

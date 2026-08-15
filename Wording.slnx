@@ -1,8 +1,6 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/Wording.Core/Wording.Core.csproj" />
-    <Project Path="src/Wording.Desktop/Wording.Desktop.csproj" />
-    <Project Path="src/Wording.Shell/Wording.Shell.csproj" />
     <Project Path="src/Wording.WordApp/Wording.WordApp.csproj" />
   </Folder>
   <Folder Name="/tests/">

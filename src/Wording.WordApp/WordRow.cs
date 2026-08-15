@@ -1,6 +1,6 @@
 using Wording.Core;
 
-namespace Wording.Shell;
+namespace Wording.WordApp;
 
 /// <summary>
 /// Wiersz listy slowek, wspolny dla powloki WinForms i Avalonii.
