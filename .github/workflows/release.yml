@@ -1,0 +1,205 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build, without the leading v (for a dry run)'
+        required: true
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.pick.outputs.version }}
+    steps:
+      - id: pick
+        # The git tag is the single source of truth; nothing in the repository
+        # hardcodes a version number.
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          fi
+
+          # CalVer: YYYY.M.PATCH. Also has to be a valid assembly version, so every
+          # component must be a plain number below 65535.
+          if ! echo "$VERSION" | grep -Eq '^[0-9]{4}\.[0-9]{1,2}\.[0-9]+$'; then
+            echo "::error::'$VERSION' is not a CalVer version like 2026.8.0"
+            exit 1
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Building version $VERSION"
+
+  windows:
+    needs: version
+    runs-on: windows-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Publish self-contained single file
+        shell: bash
+        run: |
+          dotnet publish src/Wording.WordApp/Wording.WordApp.csproj \
+            -c Release -r win-x64 \
+            --self-contained true \
+            -p:PublishSingleFile=true \
+            -p:Version="$VERSION" \
+            -p:InformationalVersion="$VERSION+${GITHUB_SHA::7}" \
+            -o dist/publish
+
+      - name: Portable archive
+        shell: bash
+        run: |
+          mkdir -p dist
+          cd dist/publish
+          7z a -tzip "../Wording-$VERSION-win-x64-portable.zip" .
+
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Build the installer
+        shell: bash
+        run: |
+          # Chocolatey usually puts a shim on PATH; fall back to the default location.
+          if command -v iscc >/dev/null; then
+            ISCC=iscc
+          else
+            ISCC="/c/Program Files (x86)/Inno Setup 6/ISCC.exe"
+          fi
+
+          "$ISCC" "/DAppVersion=$VERSION" windows/Wording.iss
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: |
+            dist/Wording-*-win-x64-setup.exe
+            dist/Wording-*-win-x64-portable.zip
+          if-no-files-found: error
+
+  macos:
+    needs: version
+    runs-on: macos-15
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+      MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+      MACOS_SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Import the Developer ID certificate
+        # Signing is optional so the workflow also works before the certificate
+        # exists. Without it the build is ad-hoc signed and Gatekeeper will refuse
+        # the download - fine for a dry run, not for a real release.
+        run: |
+          if [ -z "$MACOS_CERTIFICATE" ]; then
+            echo "::warning::No signing certificate configured - the build will be ad-hoc signed and Gatekeeper will block it."
+            exit 0
+          fi
+
+          KEYCHAIN_PWD="$(uuidgen)"
+          echo "$MACOS_CERTIFICATE" | base64 --decode > /tmp/certificate.p12
+
+          security create-keychain -p "$KEYCHAIN_PWD" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "$KEYCHAIN_PWD" build.keychain
+          security set-keychain-settings -t 3600 -u build.keychain
+          security import /tmp/certificate.p12 -k build.keychain \
+            -P "$MACOS_CERTIFICATE_PWD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: \
+            -s -k "$KEYCHAIN_PWD" build.keychain >/dev/null
+
+          rm /tmp/certificate.p12
+          security find-identity -v -p codesigning
+
+      - name: Build the universal app bundle
+        run: |
+          export VERSION UNIVERSAL=1
+          export SIGN_IDENTITY="${MACOS_SIGN_IDENTITY:-}"
+          ./macos/build-app.sh
+
+      - name: Verify the starter pack travelled into the bundle
+        run: |
+          test -d macos/build/Wording.app/Contents/Resources/Wording_WordingKit.bundle \
+            || { echo "resource bundle missing from the app"; exit 1; }
+
+      - name: Verify the binary is universal
+        run: lipo -archs macos/build/Wording.app/Contents/MacOS/Wording
+
+      - name: Create the disk image
+        run: VERSION="$VERSION" ./macos/make-dmg.sh
+
+      - name: Notarise and staple
+        run: |
+          DMG="macos/build/Wording-$VERSION-macos-universal.dmg"
+
+          if [ -z "$APPLE_ID" ] || [ -z "$APPLE_APP_PASSWORD" ] || [ -z "$APPLE_TEAM_ID" ]; then
+            echo "::warning::Notarisation credentials missing - shipping an un-notarised disk image."
+            exit 0
+          fi
+
+          # --wait blocks until Apple returns a verdict, so a rejection fails the build
+          # instead of quietly publishing something Gatekeeper will reject.
+          xcrun notarytool submit "$DMG" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_APP_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --wait
+
+          xcrun stapler staple "$DMG"
+          xcrun stapler validate "$DMG"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: macos/build/Wording-*-macos-universal.dmg
+          if-no-files-found: error
+
+  release:
+    needs: [version, windows, macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Checksums
+        run: |
+          cd artifacts
+          sha256sum * > checksums.txt
+          cat checksums.txt
+
+      - name: Publish the release
+        if: github.event_name == 'push'
+        run: |
+          gh release create "v$VERSION" \
+            --title "Wording $VERSION" \
+            --generate-notes \
+            artifacts/*

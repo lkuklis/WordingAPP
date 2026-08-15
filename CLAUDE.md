@@ -105,6 +105,25 @@ Two mistakes were made and cost real time; both were "the process started" being
 - `osascript display notification` **exits 0 even when nothing is displayed.** It posts as Script Editor and is dropped silently without that app's permission. Exit codes prove nothing about notification delivery.
 - A notification being **delivered to Notification Center is not the same as a banner being displayed.** `terminal-notifier -list` proves the former only. Alert style and Focus decide the latter, and both are TCC-protected — unreadable from a shell, so the user has to check System Settings.
 
+## Release pipeline
+
+`.github/workflows/ci.yml` builds and tests both stacks on every push, on a macOS runner
+— it is the only runner that covers Swift *and* (thanks to `EnableWindowsTargeting`) the
+WinForms project.
+
+`.github/workflows/release.yml` fires on a `v*` tag and produces the Windows installer,
+a portable zip, and a notarised universal `.dmg`. Versions are CalVer (`YYYY.M.PATCH`)
+and the **git tag is the only source of the version number** — `build-app.sh` writes it
+into `Info.plist` and the workflow passes it to `dotnet publish` as `-p:Version=`. Never
+hardcode a version in a file. See [RELEASING.md](RELEASING.md) for the required Apple
+secrets.
+
+**`macos/build-app.sh` must copy the SwiftPM resource bundle into `Contents/Resources`.**
+It is not optional packaging polish: `Bundle.module` calls `fatalError` when the bundle
+is absent, so `StarterPack.load()` would kill the app at launch — but only on a machine
+with no `words.json` yet, which is every new user and no developer. CI asserts the
+bundle is present for exactly this reason.
+
 ## Known gaps
 
 - **The Windows app has never been run**, only compiled. Its tray menu, grading, and grid are unverified.

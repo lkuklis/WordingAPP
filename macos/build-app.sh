@@ -4,16 +4,38 @@
 # The bundle is required, not cosmetic: UNUserNotificationCenter traps in a bare
 # executable because there is no bundle identifier. Only a bundled, signed app gets
 # its own entry under Settings -> Notifications and can display anything at all.
+#
+# Usage:
+#   ./build-app.sh                          local build, ad-hoc signature
+#   VERSION=2026.8.0 ./build-app.sh         stamp a specific version
+#   SIGN_IDENTITY="Developer ID Application: Name (TEAMID)" ./build-app.sh
+#                                           real signature with hardened runtime
+#
+# Environment:
+#   VERSION        version string written into Info.plist (default: 0.0.0-dev)
+#   SIGN_IDENTITY  codesign identity; empty means ad-hoc ("-")
+#   CONFIGURATION  swift build configuration (default: release)
+#   UNIVERSAL      1 to build arm64 + x86_64 (default in CI, off locally for speed)
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONFIGURATION="${1:-release}"
+CONFIGURATION="${CONFIGURATION:-release}"
+VERSION="${VERSION:-0.0.0-dev}"
+SIGN_IDENTITY="${SIGN_IDENTITY:-}"
+UNIVERSAL="${UNIVERSAL:-0}"
 APP="$SCRIPT_DIR/build/Wording.app"
 
-echo "==> Building ($CONFIGURATION)"
-swift build -c "$CONFIGURATION" --package-path "$SCRIPT_DIR"
+BUILD_FLAGS=(-c "$CONFIGURATION" --package-path "$SCRIPT_DIR")
 
-BIN="$(swift build -c "$CONFIGURATION" --package-path "$SCRIPT_DIR" --show-bin-path)/WordingApp"
+if [ "$UNIVERSAL" = "1" ]; then
+    # Intel Macs are still around and the extra slice is cheap.
+    BUILD_FLAGS+=(--arch arm64 --arch x86_64)
+fi
+
+echo "==> Building ($CONFIGURATION, version $VERSION, universal=$UNIVERSAL)"
+swift build "${BUILD_FLAGS[@]}"
+
+BIN="$(swift build "${BUILD_FLAGS[@]}" --show-bin-path)/WordingApp"
 
 echo "==> Assembling the bundle"
 rm -rf "$APP"
@@ -21,7 +43,14 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
 cp "$BIN" "$APP/Contents/MacOS/Wording"
 
-cat > "$APP/Contents/Info.plist" <<'PLIST'
+# SwiftPM puts target resources in a bundle next to the executable; it has to travel
+# into the app or StarterPack.load() finds nothing on a first run.
+for RESOURCE_BUNDLE in "$(dirname "$BIN")"/*.bundle; do
+    [ -e "$RESOURCE_BUNDLE" ] || continue
+    cp -R "$RESOURCE_BUNDLE" "$APP/Contents/Resources/"
+done
+
+cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -37,9 +66,9 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>2.0</string>
+    <string>$VERSION</string>
     <key>CFBundleVersion</key>
-    <string>2</string>
+    <string>$VERSION</string>
     <key>LSMinimumSystemVersion</key>
     <string>14.0</string>
     <!-- The app lives only in the menu bar - no Dock icon. -->
@@ -49,10 +78,19 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 </plist>
 PLIST
 
-echo "==> Signing (ad-hoc)"
-# Without a signature macOS does not assign a stable identity, so notification
-# permission would be lost on every launch.
-codesign --force --sign - "$APP" >/dev/null 2>&1
+if [ -n "$SIGN_IDENTITY" ]; then
+    echo "==> Signing with Developer ID (hardened runtime)"
+    # --options runtime is mandatory for notarisation; --timestamp makes the
+    # signature outlive the certificate.
+    codesign --force --deep --options runtime --timestamp \
+        --sign "$SIGN_IDENTITY" "$APP"
+    codesign --verify --strict --verbose=2 "$APP"
+else
+    echo "==> Signing (ad-hoc - local builds only, Gatekeeper will refuse a download)"
+    # Without a signature macOS does not assign a stable identity, so notification
+    # permission would be lost on every launch.
+    codesign --force --deep --sign - "$APP" >/dev/null 2>&1
+fi
 
 echo "==> Done: $APP"
 echo "    run with: open \"$APP\""

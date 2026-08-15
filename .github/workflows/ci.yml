@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [master, upgrade]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    # A macOS runner covers both stacks: Swift needs it, and the WinForms project
+    # compiles here too thanks to EnableWindowsTargeting (it just cannot run).
+    runs-on: macos-15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Show toolchain versions
+        run: |
+          dotnet --version
+          swift --version
+
+      - name: Build .NET
+        run: dotnet build Wording.slnx -c Release
+
+      - name: Test .NET
+        run: dotnet test -c Release --no-build
+
+      - name: Build Swift
+        run: swift build --package-path macos -c release
+
+      - name: Test Swift
+        run: swift test --package-path macos
+
+      - name: Assemble the macOS app bundle
+        # Catches packaging regressions - notably a missing resource bundle, which
+        # traps at launch rather than at build time.
+        run: VERSION=0.0.0-ci ./macos/build-app.sh
+
+      - name: Verify the starter pack travelled into the bundle
+        run: |
+          BUNDLE=macos/build/Wording.app/Contents/Resources/Wording_WordingKit.bundle
+          test -d "$BUNDLE" || { echo "resource bundle missing from the app"; exit 1; }
+          test -f "$BUNDLE/Contents/Resources/starter-pack.json" \
+            || test -f "$BUNDLE/starter-pack.json" \
+            || { echo "starter-pack.json missing from the resource bundle"; exit 1; }

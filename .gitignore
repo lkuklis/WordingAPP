@@ -111,3 +111,6 @@ UpgradeLog*.XML
 macos/.build/
 macos/build/
 .swiftpm/
+
+# Release artefacts
+dist/

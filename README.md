@@ -1,22 +1,54 @@
 Wording App
 ==========
 Wording helps you learn word and sentence translations between languages. It lives in
-the Windows system tray and shows a word in a notification every few seconds while you
-work, so learning happens in the background.
+the system tray on Windows and the menu bar on macOS, and shows a word in a notification
+every few minutes while you work, so learning happens in the background.
 
 Words you mark as known come back less and less often; words you forget come back soon.
-Scheduling uses the SM-2 spaced repetition algorithm, and you grade the last shown word
-from the tray icon's context menu.
+Scheduling uses the SM-2 spaced repetition algorithm. On macOS you grade the word
+straight from the notification's action buttons; on Windows you grade it from the tray
+icon menu.
 
-Your words live in `words.json` in the per-user data directory (`%APPDATA%\Wording` on
-Windows), and can be edited with the application or with any text editor. A sample
-English → Polish pack is committed in the repository and is imported automatically on
-first run, along with any `WordsData.xml` left over from older versions.
+## Install
 
-Requires the .NET 10 Desktop Runtime on Windows.
+Grab the latest build from the [Releases page](https://github.com/lkuklis/WordingAPP/releases).
 
+**macOS** — download the `.dmg`, open it and drag Wording to Applications. The app has
+no Dock icon; look for the book glyph in the menu bar. macOS will ask for permission to
+send notifications the first time — the app is useless without it.
+
+**Windows** — download the `-setup.exe` installer. It is not code signed, so SmartScreen
+will show *"Windows protected your PC"*: click **More info → Run anyway**. If you would
+rather not use an installer, the `-portable.zip` contains the same build; unzip it
+anywhere and run `Wording.WordApp.exe`. Nothing else needs installing — the .NET runtime
+travels with the app.
+
+## Your words
+
+Everything lives in one `words.json` file:
+
+- Windows: `%APPDATA%\Wording\words.json`
+- macOS: `~/Library/Application Support/Wording/words.json`
+
+Edit it with the app or with any text editor. Review progress is stored alongside each
+word, so pointing both apps at the same synced file keeps your learning in step across
+machines.
+
+A sample English → Polish pack ships with the app and seeds the file on first run, along
+with any `WordsData.xml` left over from older versions.
+
+## Building from source
+
+Requires the .NET 10 SDK; the macOS app additionally needs Xcode command line tools.
+
+```bash
+dotnet build Wording.slnx        # Windows app and shared logic
+dotnet test                      # 49 tests
+
+cd macos
+swift test                       # 43 tests
+./build-app.sh && open build/Wording.app
 ```
-dotnet build Wording.slnx
-dotnet test
-dotnet publish src/Wording.WordApp/Wording.WordApp.csproj -c Release -r win-x64 --self-contained false -o out
-```
+
+The Windows project compiles on macOS and Linux too, it simply cannot run there. See
+[RELEASING.md](RELEASING.md) for how releases are built and signed.
