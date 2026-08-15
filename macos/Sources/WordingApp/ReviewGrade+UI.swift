@@ -1,10 +1,10 @@
 import WordingKit
 
-/// Prezentacja ocen: jedno zrodlo etykiet i identyfikatorow akcji, z ktorego
-/// korzystaja powiadomienie, menu w pasku i okno z lista. Tekst UI nie nalezy
-/// do WordingKit, dlatego rozszerzenie zyje w warstwie aplikacji.
+/// Grade presentation: one source of button labels and action identifiers, shared by
+/// the notification, the menu bar and the word list. UI text does not belong in
+/// WordingKit, which is why this extension lives in the app layer.
 extension ReviewGrade {
-    /// Kolejnosc prezentacji - ta sama wszedzie.
+    /// Presentation order - the same everywhere.
     static let ordered: [ReviewGrade] = [.good, .hard, .again]
 
     var buttonTitle: String {

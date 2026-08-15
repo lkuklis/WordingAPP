@@ -4,20 +4,20 @@ using Wording.Core.Storage;
 namespace Wording.WordApp;
 
 /// <summary>
-/// Ustawienia aplikacji z appsettings.json. Konfiguracje czyta wylacznie warstwa
-/// aplikacji - Wording.Core dostaje gotowe wartosci.
+/// Application settings from appsettings.json. Only the app layer reads configuration -
+/// Wording.Core receives ready-made values.
 /// </summary>
 public sealed class WordingSettings
 {
     public const string SectionName = "wording";
 
-    /// <summary>Co ile sekund pokazac kolejne slowko.</summary>
+    /// <summary>How many seconds between words.</summary>
     public int ChangeTimeSeconds { get; set; } = 5;
 
-    /// <summary>Jak dlugo powiadomienie ma byc widoczne.</summary>
+    /// <summary>How long the notification should stay visible.</summary>
     public int ShowTimeSeconds { get; set; } = 6;
 
-    /// <summary>Nadpisanie sciezki pliku danych. Puste - katalog danych uzytkownika.</summary>
+    /// <summary>Overrides the data file path. Empty means the per-user data directory.</summary>
     public string? DataFile { get; set; }
 
     public static WordingSettings Load()
@@ -30,20 +30,20 @@ public sealed class WordingSettings
         var settings = new WordingSettings();
         configuration.GetSection(SectionName).Bind(settings);
 
-        // Chroni przed zerowym albo ujemnym interwalem w recznie edytowanym pliku.
+        // Guards against a zero or negative interval in a hand-edited file.
         settings.ChangeTimeSeconds = Math.Max(1, settings.ChangeTimeSeconds);
         settings.ShowTimeSeconds = Math.Max(1, settings.ShowTimeSeconds);
 
         return settings;
     }
 
-    /// <summary>Docelowa sciezka pliku ze slowkami.</summary>
+    /// <summary>The data file this run will use.</summary>
     public string ResolveDataFile() =>
         string.IsNullOrWhiteSpace(DataFile) ? WordingPaths.DataFile() : DataFile;
 
     /// <summary>
-    /// Plik w starym formacie XML, o ile istnieje. Szukamy obok pliku exe (tam trafia
-    /// pakiet startowy) oraz w katalogu roboczym, gdzie trzymala go stara wersja.
+    /// The legacy XML file, if one exists. Looks next to the executable (where the
+    /// starter pack ships) and in the working directory, where the old version kept it.
     /// </summary>
     public static string? FindLegacyXml()
     {

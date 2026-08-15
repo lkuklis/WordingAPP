@@ -3,14 +3,14 @@ import Testing
 
 @testable import WordingKit
 
-/// Zgodnosc formatu z powlokami .NET. To jest najwazniejszy test w tym pakiecie:
-/// words.json jest jedynym kontraktem miedzy aplikacja macOS a wersjami .NET,
-/// wiec kazda rozbieznosc w serializacji cicho rozjezdza dane uzytkownika.
+/// Format compatibility with the .NET app. This is the most important suite in the
+/// package: words.json is the only contract between the macOS app and the .NET one,
+/// so any serialization mismatch silently corrupts the user's data.
 @Suite struct InteropTests {
 
-    /// Doslowny fragment pliku zapisanego przez System.Text.Json, razem ze
-    /// stanem powtorek wygenerowanym przez klikniecia w powloce Avalonii.
-    static let plikZDotNet = """
+    /// A verbatim fragment of a file written by System.Text.Json, including review
+    /// state produced by real grading.
+    static let dotNetFile = """
         {
           "version": 1,
           "words": [
@@ -45,16 +45,16 @@ import Testing
         }
         """
 
-    @Test func odczytujePlikZapisanyPrzezDotNet() throws {
-        let plik = try WordingJSON.decoder.decode(
+    @Test func readsAFileWrittenByDotNet() throws {
+        let file = try WordingJSON.decoder.decode(
             WordFile.self,
-            from: Data(Self.plikZDotNet.utf8)
+            from: Data(Self.dotNetFile.utf8)
         )
 
-        #expect(plik.version == 1)
-        #expect(plik.words.count == 2)
+        #expect(file.version == 1)
+        #expect(file.words.count == 2)
 
-        let scope = plik.words[0]
+        let scope = file.words[0]
         #expect(scope.original == "scope")
         #expect(scope.translation == "zakres")
         #expect(scope.id == UUID(uuidString: "2a1e11cb-7062-43bc-b68e-865fc3efea0e"))
@@ -63,25 +63,25 @@ import Testing
         #expect(scope.review.lastReviewedUtc != nil)
     }
 
-    @Test func obslugujeDateZSzescioCyframiUlamkaSekundy() throws {
-        // .NET zapisuje mikrosekundy; standardowe .iso8601 w Swift tego nie przyjmuje.
-        let data = WordingJSON.parseDate("2026-08-14T22:18:18.405614+00:00")
+    @Test func handlesDatesWithSixFractionalDigits() throws {
+        // .NET writes microseconds; Swift's stock .iso8601 strategy rejects them.
+        let parsed = WordingJSON.parseDate("2026-08-14T22:18:18.405614+00:00")
 
-        #expect(data != nil)
+        #expect(parsed != nil)
     }
 
-    @Test func brakLastReviewedUtcOznaczaSlowkoNigdyNiepowtarzane() throws {
-        let plik = try WordingJSON.decoder.decode(
+    @Test func missingLastReviewedUtcMeansNeverReviewed() throws {
+        let file = try WordingJSON.decoder.decode(
             WordFile.self,
-            from: Data(Self.plikZDotNet.utf8)
+            from: Data(Self.dotNetFile.utf8)
         )
 
-        // .NET pomija klucz zamiast zapisywac null (DefaultIgnoreCondition).
-        #expect(plik.words[1].review.lastReviewedUtc == nil)
+        // .NET omits the key instead of writing null (DefaultIgnoreCondition).
+        #expect(file.words[1].review.lastReviewedUtc == nil)
     }
 
-    @Test func zapisPomijaLastReviewedUtcTakSamoJakDotNet() throws {
-        let slowo = Word(
+    @Test func encodingOmitsLastReviewedUtcJustLikeDotNet() throws {
+        let word = Word(
             original: "scope",
             translation: "zakres",
             createdUtc: Date(),
@@ -89,17 +89,17 @@ import Testing
         )
 
         let json = String(
-            data: try WordingJSON.encoder.encode(WordFile(version: 1, words: [slowo])),
+            data: try WordingJSON.encoder.encode(WordFile(version: 1, words: [word])),
             encoding: .utf8
         )!
 
         #expect(!json.contains("lastReviewedUtc"))
     }
 
-    @Test func zapisujeGuidyMalymiLiterami() throws {
-        // Swift domyslnie zapisuje UUID wielkimi literami; bez korekty kazdy
-        // zapis z macOS przepisywalby wszystkie identyfikatory w pliku.
-        let slowo = Word(
+    @Test func encodesGuidsInLowerCase() throws {
+        // Swift encodes UUIDs in upper case by default; without the fix, every save
+        // from macOS would rewrite all identifiers in the file.
+        let word = Word(
             id: UUID(uuidString: "2A1E11CB-7062-43BC-B68E-865FC3EFEA0E")!,
             original: "scope",
             translation: "zakres",
@@ -108,7 +108,7 @@ import Testing
         )
 
         let json = String(
-            data: try WordingJSON.encoder.encode(WordFile(version: 1, words: [slowo])),
+            data: try WordingJSON.encoder.encode(WordFile(version: 1, words: [word])),
             encoding: .utf8
         )!
 
@@ -116,22 +116,22 @@ import Testing
         #expect(!json.contains("2A1E11CB"))
     }
 
-    @Test func pelnaRundaTamIzPowrotemNieGubiDanych() throws {
-        let oryginal = try WordingJSON.decoder.decode(
+    @Test func aFullRoundTripLosesNothing() throws {
+        let original = try WordingJSON.decoder.decode(
             WordFile.self,
-            from: Data(Self.plikZDotNet.utf8)
+            from: Data(Self.dotNetFile.utf8)
         )
 
-        let zapisany = try WordingJSON.encoder.encode(oryginal)
-        let ponownie = try WordingJSON.decoder.decode(WordFile.self, from: zapisany)
+        let encoded = try WordingJSON.encoder.encode(original)
+        let decoded = try WordingJSON.decoder.decode(WordFile.self, from: encoded)
 
-        #expect(ponownie.words == oryginal.words)
-        #expect(ponownie.words[1].translation == "domyślnie, bezwzględnie, bez zastrzeżeń")
+        #expect(decoded.words == original.words)
+        #expect(decoded.words[1].translation == "domyślnie, bezwzględnie, bez zastrzeżeń")
     }
 
-    @Test func katalogDanychJestTenSamCoWDotNet() {
-        let sciezka = WordingPaths.dataFile().path(percentEncoded: false)
+    @Test func theDataDirectoryMatchesTheDotNetOne() {
+        let path = WordingPaths.dataFile().path(percentEncoded: false)
 
-        #expect(sciezka.hasSuffix("Library/Application Support/Wording/words.json"))
+        #expect(path.hasSuffix("Library/Application Support/Wording/words.json"))
     }
 }

@@ -1,20 +1,20 @@
 import Foundation
 
-/// Konfiguracja JSON zgodna z tym, co zapisuje System.Text.Json po stronie .NET.
+/// JSON settings that match what System.Text.Json writes on the .NET side.
 ///
-/// Daty wymagaja uwagi: .NET zapisuje `DateTimeOffset` jako
-/// `2026-08-14T22:18:18.405614+00:00`, czyli z szescioma cyframi ulamka sekundy.
-/// Standardowa strategia `.iso8601` w Swift w ogole tego nie przyjmuje.
+/// Dates need care: .NET writes `DateTimeOffset` as `2026-08-14T22:18:18.405614+00:00`,
+/// with six fractional-second digits. Swift's stock `.iso8601` strategy rejects
+/// fractional seconds outright.
 ///
-/// Kuszacy `Date.ISO8601FormatStyle` (typ wartosciowy, `Sendable`) tu NIE dziala:
-/// przy zapisie ucina ulamek do milisekund zamiast zaokraglac, przez co runda
-/// odczyt-zapis-odczyt nie jest stabilna (.405614 -> .405 -> .404) i kazdy zapis
-/// przesuwalby znaczniki czasu w tyl. `ISO8601DateFormatter` zaokragla poprawnie.
+/// The tempting `Date.ISO8601FormatStyle` (a value type, and `Sendable`) does NOT work
+/// here: it truncates the fraction to milliseconds instead of rounding, so the
+/// read-write-read round trip does not converge (.405614 -> .405 -> .404) and every save
+/// would walk timestamps backwards. `ISO8601DateFormatter` rounds correctly.
 ///
-/// Formater powstaje wewnatrz domkniecia, a nie jest do niego przechwytywany:
-/// strategie kodowania sa `@Sendable`, a `ISO8601DateFormatter` nie jest `Sendable`.
-/// Kosztuje to ok. 14 ms na zapis calego pliku - przy kilkudziesieciu slowkach
-/// niezauwazalne, a unika dzielenia niebezpiecznego stanu miedzy watkami.
+/// The formatter is built inside each coding closure rather than captured by it: the
+/// strategies are `@Sendable` and `ISO8601DateFormatter` is not. That costs about 14 ms
+/// per whole-file save - imperceptible at this size, and it avoids sharing unsafe state
+/// across threads.
 public enum WordingJSON {
     static func makeFormatter(fractionalSeconds: Bool) -> ISO8601DateFormatter {
         let formatter = ISO8601DateFormatter()
@@ -39,7 +39,7 @@ public enum WordingJSON {
             guard let date = parseDate(text) else {
                 throw DecodingError.dataCorruptedError(
                     in: container,
-                    debugDescription: "Nierozpoznany format daty: \(text)"
+                    debugDescription: "Unrecognised date format: \(text)"
                 )
             }
 
@@ -53,7 +53,7 @@ public enum WordingJSON {
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
         encoder.dateEncodingStrategy = .custom { date, encoder in
             var container = encoder.singleValueContainer()
-            // .NET przyjmuje zarowno "Z", jak i "+00:00".
+            // .NET accepts both "Z" and "+00:00".
             try container.encode(makeFormatter(fractionalSeconds: true).string(from: date))
         }
         return encoder

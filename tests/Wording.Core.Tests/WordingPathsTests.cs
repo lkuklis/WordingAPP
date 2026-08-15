@@ -5,25 +5,25 @@ namespace Wording.Core.Tests;
 public class WordingPathsTests
 {
     [Fact]
-    public void KatalogDanych_JestSciezkaBezwzgledna()
+    public void DataDirectory_IsAnAbsolutePath()
     {
-        // Sedno naprawy: stara wersja czytala "WordsData.xml" wzgledem katalogu
-        // roboczego procesu, wiec uruchomienie z innego miejsca wywalalo aplikacje.
+        // The point of the fix: the old version read "WordsData.xml" relative to the
+        // process working directory, so launching from elsewhere crashed the app.
         Assert.True(Path.IsPathRooted(WordingPaths.DataDirectory()));
         Assert.True(Path.IsPathRooted(WordingPaths.DataFile()));
     }
 
     [Fact]
-    public void PlikDanych_LezyWKataloguAplikacji()
+    public void DataFile_LivesInTheApplicationDirectory()
     {
-        var plik = WordingPaths.DataFile();
+        var file = WordingPaths.DataFile();
 
-        Assert.Equal(WordingPaths.DataFileName, Path.GetFileName(plik));
-        Assert.Equal(WordingPaths.AppFolderName, Path.GetFileName(Path.GetDirectoryName(plik)));
+        Assert.Equal(WordingPaths.DataFileName, Path.GetFileName(file));
+        Assert.Equal(WordingPaths.AppFolderName, Path.GetFileName(Path.GetDirectoryName(file)));
     }
 
     [Fact]
-    public void NaMacOs_UzywaLibraryApplicationSupport()
+    public void OnMacOs_UsesLibraryApplicationSupport()
     {
         if (!OperatingSystem.IsMacOS())
         {

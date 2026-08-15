@@ -1,20 +1,20 @@
 namespace Wording.Core.Learning;
 
 /// <summary>
-/// Algorytm SM-2 (SuperMemo 2) w wersji czystej funkcji.
-/// Liczy nowy stan powtorek na podstawie poprzedniego stanu i oceny.
+/// The SM-2 (SuperMemo 2) algorithm as a pure function: it computes the next review
+/// state from the previous state and a grade.
 /// </summary>
 public static class SpacedRepetitionScheduler
 {
-    /// <summary>Odstep po pierwszej udanej powtorce.</summary>
+    /// <summary>Interval after the first successful review.</summary>
     const double FirstIntervalDays = 1.0;
 
-    /// <summary>Odstep po drugiej udanej powtorce.</summary>
+    /// <summary>Interval after the second successful review.</summary>
     const double SecondIntervalDays = 6.0;
 
     /// <summary>
-    /// Po <see cref="ReviewGrade.Again"/> slowko wraca po chwili, a nie natychmiast -
-    /// inaczej zablokowaloby cala rotacje, bo bylo by stale najbardziej przeterminowane.
+    /// After <see cref="ReviewGrade.Again"/> a word comes back shortly, not instantly -
+    /// otherwise it would be permanently the most overdue word and would block the rotation.
     /// </summary>
     static readonly TimeSpan RelearnDelay = TimeSpan.FromMinutes(10);
 
@@ -25,7 +25,7 @@ public static class SpacedRepetitionScheduler
         var quality = (int)grade;
         var easeFactor = NextEaseFactor(current.EaseFactor, quality);
 
-        // SM-2 traktuje ocene ponizej 3 jako nietrafiona - licznik powtorek startuje od zera.
+        // SM-2 treats anything below 3 as a failed recall - the repetition count restarts.
         if (quality < 3)
         {
             return current with
@@ -58,8 +58,8 @@ public static class SpacedRepetitionScheduler
     }
 
     /// <summary>
-    /// Oryginalny wzor SM-2 na korekte latwosci:
-    /// EF' = EF + (0.1 - (5-q) * (0.08 + (5-q) * 0.02)), z dolnym progiem 1.3.
+    /// The original SM-2 ease adjustment:
+    /// EF' = EF + (0.1 - (5-q) * (0.08 + (5-q) * 0.02)), floored at 1.3.
     /// </summary>
     static double NextEaseFactor(double easeFactor, int quality)
     {

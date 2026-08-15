@@ -4,75 +4,75 @@ import Testing
 @testable import WordingKit
 
 @Suite struct StarterPackTests {
-    static let teraz = Fixtures.teraz
+    static let now = Fixtures.now
 
-    @Test func pakietStartowyJestDolaczonyDoPakietu() throws {
+    @Test func starterPackShipsWithTheBundle() throws {
         let pack = try StarterPack.load()
 
         #expect(pack.count == 38)
         #expect(pack.contains { $0.original == "scope" && $0.translation == "zakres" })
     }
 
-    @Test func pakietStartowyNieMaPustychWpisow() throws {
+    @Test func starterPackHasNoBlankEntries() throws {
         for entry in try StarterPack.load() {
             #expect(!entry.original.isEmpty)
             #expect(!entry.translation.isEmpty)
         }
     }
 
-    @Test func pakietStartowyZachowujePolskieZnaki() throws {
+    @Test func starterPackKeepsNonAsciiCharacters() throws {
         #expect(try StarterPack.load().contains { $0.translation.contains("domyślnie") })
     }
 
-    @Test func zasiewaPustyMagazyn() throws {
+    @Test func seedsAnEmptyStore() throws {
         let dir = try TempDirectory()
         let store = try WordStore(fileURL: dir.jsonFile)
 
-        #expect(try store.seedIfEmpty(now: Self.teraz) == 38)
+        #expect(try store.seedIfEmpty(now: Self.now) == 38)
         #expect(store.words.count == 38)
 
-        // Wszystkie od razu wymagalne i jeszcze nieoceniane.
+        // All due immediately and never graded.
         for word in store.words {
             #expect(word.isNew)
-            #expect(word.isDue(at: Self.teraz))
+            #expect(word.isDue(at: Self.now))
         }
     }
 
-    @Test func zasianeSlowkaMajaUnikalneIdentyfikatory() throws {
+    @Test func seededWordsGetUniqueIdentifiers() throws {
         let dir = try TempDirectory()
         let store = try WordStore(fileURL: dir.jsonFile)
 
-        try store.seedIfEmpty(now: Self.teraz)
+        try store.seedIfEmpty(now: Self.now)
 
         #expect(Set(store.words.map(\.id)).count == 38)
     }
 
-    @Test func nieDotykaMagazynuKtoryJuzCosZawiera() throws {
-        // Krytyczne: plik moze pochodzic z aplikacji .NET i zawierac stan powtorek.
+    @Test func leavesANonEmptyStoreAlone() throws {
+        // Critical: the file may come from the .NET app and carry review state.
         let dir = try TempDirectory()
         let store = try WordStore(fileURL: dir.jsonFile)
-        try store.add(original: "juz-tu-bylo", translation: "istniejace", now: Self.teraz)
+        try store.add(original: "already-here", translation: "existing", now: Self.now)
 
-        #expect(try store.seedIfEmpty(now: Self.teraz) == 0)
+        #expect(try store.seedIfEmpty(now: Self.now) == 0)
         #expect(store.words.count == 1)
-        #expect(store.words[0].original == "juz-tu-bylo")
+        #expect(store.words[0].original == "already-here")
     }
 
-    @Test func zasianyMagazynDaSieOdczytacPonownieZDysku() throws {
+    @Test func aSeededStoreCanBeReadBackFromDisk() throws {
         let dir = try TempDirectory()
-        try WordStore(fileURL: dir.jsonFile).seedIfEmpty(now: Self.teraz)
+        try WordStore(fileURL: dir.jsonFile).seedIfEmpty(now: Self.now)
 
         #expect(try WordStore(fileURL: dir.jsonFile).words.count == 38)
     }
 
-    @Test func zasiewRobiJedenZapisNieJedenNaSlowko() throws {
-        // Wczesniej kazde slowko szlo osobnym add(), czyli 38 pelnych zapisow pliku.
+    @Test func seedingWritesOnceNotOncePerWord() throws {
+        // Every word used to go through its own add(), meaning 38 full file writes.
         let dir = try TempDirectory()
         let store = try WordStore(fileURL: dir.jsonFile)
 
-        try store.seedIfEmpty(now: Self.teraz)
+        try store.seedIfEmpty(now: Self.now)
 
-        // Wszystkie slowka maja ten sam znacznik czasu - slad jednego przebiegu.
+        // All words share one timestamp - the trace of a single pass.
         #expect(Set(store.words.map(\.createdUtc)).count == 1)
     }
 }

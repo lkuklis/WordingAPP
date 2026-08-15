@@ -2,20 +2,20 @@ import Foundation
 import UserNotifications
 import WordingKit
 
-/// Powiadomienia natywne przez UNUserNotificationCenter.
+/// Native notifications through UNUserNotificationCenter.
 ///
-/// W odroznieniu od osascript i terminal-notifier ta droga daje przyciski akcji,
-/// czyli ocene powtorki wprost z powiadomienia - bez otwierania menu.
+/// Unlike osascript or terminal-notifier, this route gives action buttons - grading a
+/// word straight from the notification, without opening a menu.
 ///
-/// WYMAGA zapakowanej aplikacji: `UNUserNotificationCenter.current()` przewraca sie
-/// w golym pliku wykonywalnym, bo nie ma identyfikatora pakietu. Dlatego aplikacje
-/// uruchamia sie przez Wording.app (build-app.sh), a nie przez `swift run`.
+/// It REQUIRES a bundled app: `UNUserNotificationCenter.current()` traps in a bare
+/// executable because there is no bundle identifier. Run the app through Wording.app
+/// (build-app.sh), not through `swift run`.
 @MainActor
 final class NotificationService {
     nonisolated static let categoryIdentifier = "wording.word"
     nonisolated static let wordIdKey = "wordId"
 
-    /// Rejestruje kategorie z przyciskami i prosi o zgode.
+    /// Registers the button category and asks for permission.
     func prepare() async {
         let center = UNUserNotificationCenter.current()
 
@@ -42,7 +42,7 @@ final class NotificationService {
         content.categoryIdentifier = Self.categoryIdentifier
         content.userInfo = [Self.wordIdKey: word.id.uuidString]
 
-        // Bez wyzwalacza - powiadomienie idzie natychmiast.
+        // No trigger - the notification fires immediately.
         let request = UNNotificationRequest(
             identifier: UUID().uuidString,
             content: content,
@@ -52,8 +52,8 @@ final class NotificationService {
         UNUserNotificationCenter.current().add(request)
     }
 
-    /// Stan zgody, zeby aplikacja mogla powiedziec wprost, ze system ja blokuje,
-    /// zamiast po cichu nic nie pokazywac.
+    /// Authorization status, so the app can say plainly that the system is blocking it
+    /// instead of silently showing nothing.
     func authorizationStatus() async -> UNAuthorizationStatus {
         await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
     }

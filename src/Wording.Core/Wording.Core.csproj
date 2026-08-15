@@ -7,19 +7,19 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <!-- Celowo bez -windows: cala logika ma byc platformo-niezalezna i testowalna na macOS.
-         Core nie czyta zadnej konfiguracji - ustawienia wstrzykuje warstwa aplikacji. -->
+    <!-- Intentionally not -windows: all logic must stay platform independent and
+         testable on macOS. Core reads no configuration - the app layer injects it. -->
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Startowy pakiet slowek EN->PL. Sluzy tez jako zrodlo jednorazowej
-         migracji ze starego formatu XML na words.json. -->
+    <!-- Starter pack of English->Polish words. Also the source for the one-off
+         migration from the legacy XML format to words.json. -->
     <Content Include="WordsData.xml" CopyToOutputDirectory="Always" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Testy sprawdzaja wagi selektora, ktore sa szczegolem implementacyjnym
-         i nie powinny wchodzic do publicznego API. -->
+    <!-- The tests assert on selector weights, which are an implementation detail
+         and should not widen the public API. -->
     <InternalsVisibleTo Include="Wording.Core.Tests" />
   </ItemGroup>
 

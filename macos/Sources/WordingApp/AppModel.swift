@@ -5,11 +5,11 @@ import WordingKit
 @MainActor
 @Observable
 final class AppModel {
-    /// Jedna instancja na proces - siega po nia zarowno UI, jak i delegat
-    /// powiadomien obslugujacy klikniecia w przyciski oceny.
+    /// One instance per process - both the UI and the notification delegate that
+    /// handles grade button taps reach for it.
     static let shared = AppModel()
 
-    /// Dostepne odstepy miedzy slowkami.
+    /// Available intervals between words.
     static let intervalOptions: [(label: String, seconds: TimeInterval)] = [
         ("5 seconds", 5),
         ("30 seconds", 30),
@@ -31,9 +31,9 @@ final class AppModel {
     var lastShown: Word?
     var statusMessage = ""
 
-    // Wartosci startowe czytamy w inicjalizatorze wlasciwosci, gdzie didSet
-    // jeszcze nie dziala - inaczej start aplikacji zapisywalby do UserDefaults
-    // to, co przed chwila z niego wyjal, i trzykrotnie budowal timer.
+    // Initial values are read in the property initialiser, where didSet does not run
+    // yet - otherwise startup would write back to UserDefaults what it had just read
+    // and would build the timer three times.
     var isPaused = UserDefaults.standard.bool(forKey: Keys.paused) {
         didSet {
             UserDefaults.standard.set(isPaused, forKey: Keys.paused)
@@ -52,8 +52,8 @@ final class AppModel {
         do {
             let store = try WordStore()
 
-            // Pierwsze uruchomienie na czystej maszynie. Gdy plik juz istnieje
-            // (np. zapisany przez aplikacje .NET), nic sie nie dzieje.
+            // First run on a clean machine. When the file already exists (written by
+            // the .NET app, say) nothing happens.
             try store.seedIfEmpty()
 
             manager = WordManager(store: store)

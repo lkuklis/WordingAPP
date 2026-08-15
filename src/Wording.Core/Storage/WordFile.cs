@@ -1,8 +1,8 @@
 namespace Wording.Core.Storage;
 
 /// <summary>
-/// Kształt pliku words.json. Wydzielony z <see cref="JsonWordStore"/>, bo generator
-/// zrodel dla System.Text.Json potrzebuje typu najwyzszego poziomu.
+/// Shape of words.json. Split out of <see cref="JsonWordStore"/> because the
+/// System.Text.Json source generator needs a top-level type.
 /// </summary>
 internal sealed class WordFile
 {

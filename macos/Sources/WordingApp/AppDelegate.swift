@@ -2,8 +2,8 @@ import AppKit
 import UserNotifications
 import WordingKit
 
-/// Odbiera reakcje na powiadomienia. Delegat musi byc ustawiony zanim
-/// poprosimy o zgode, inaczej klikniecia w przyciski nie trafiaja nigdzie.
+/// Receives notification responses. The delegate must be set before we ask for
+/// permission, otherwise button taps go nowhere.
 final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -14,8 +14,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         }
     }
 
-    /// Bez tego powiadomienia nie pokazuja sie, gdy aplikacja jest aktywna -
-    /// a ona jest aktywna zawsze, bo siedzi w pasku menu.
+    /// Without this, notifications do not appear while the app is active - and it is
+    /// always active, because it lives in the menu bar.
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification
@@ -32,7 +32,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         guard
             let raw = userInfo[NotificationService.wordIdKey] as? String,
             let id = UUID(uuidString: raw),
-            // Klikniecie w samo powiadomienie (bez przycisku) tylko je zamyka.
+            // Tapping the notification body (no button) just dismisses it.
             let grade = ReviewGrade(actionIdentifier: response.actionIdentifier)
         else { return }
 

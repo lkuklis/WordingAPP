@@ -4,8 +4,8 @@ using Wording.Core;
 namespace Wording.WordApp;
 
 /// <summary>
-/// Wiersz siatki. Osobny typ, bo <see cref="Word"/> niesie zagniezdzony stan
-/// powtorek, ktorego DataGridView nie pokaze sam z siebie.
+/// A grid row. A separate type because <see cref="Word"/> carries nested review
+/// state that DataGridView cannot display on its own.
 /// </summary>
 public sealed class WordRow
 {

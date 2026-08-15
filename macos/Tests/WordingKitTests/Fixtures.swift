@@ -2,12 +2,12 @@ import Foundation
 
 @testable import WordingKit
 
-/// Wspolny punkt odniesienia dla wszystkich testow.
+/// A single reference point for every test.
 enum Fixtures {
-    static let teraz = Date(timeIntervalSince1970: 1_786_000_000)
+    static let now = Date(timeIntervalSince1970: 1_786_000_000)
 }
 
-/// Deterministyczny generator, zeby testy rozkladu nie byly kruche.
+/// A deterministic generator, so the distribution tests do not flake.
 struct SeededGenerator: RandomNumberGenerator {
     private var state: UInt64
 
@@ -22,7 +22,7 @@ struct SeededGenerator: RandomNumberGenerator {
     }
 }
 
-/// Izolowany katalog na dane, sprzatany po tescie.
+/// An isolated data directory, removed after the test.
 final class TempDirectory {
     let path: URL
 

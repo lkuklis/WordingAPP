@@ -9,7 +9,7 @@ namespace Wording.WordApp;
 
 public partial class WordingMain : Form
 {
-    /// <summary>Etykiety ocen w jednym miejscu - menu buduje sie z tej tablicy.</summary>
+    /// <summary>Grade labels in one place - the tray menu is built from this table.</summary>
     static readonly (string Label, ReviewGrade Grade)[] Grades =
     [
         ("I know it", ReviewGrade.Good),
@@ -23,7 +23,7 @@ public partial class WordingMain : Form
     readonly int _showTimeMs;
     readonly ToolStripMenuItem[] _gradeItems;
 
-    /// <summary>Ostatnio pokazane slowko - to jego dotycza oceny z menu w zasobniku.</summary>
+    /// <summary>The word shown last - the tray menu grades apply to it.</summary>
     Word? _lastShown;
 
     public WordingMain(WordManager manager, WordingSettings settings)
@@ -112,8 +112,7 @@ public partial class WordingMain : Form
             .Select(word => new WordRow(word, now))
             .ToList();
 
-        // Edycja komorek nigdy nie byla zapisywana, wiec siatka jest do odczytu.
-        // Usuwanie wierszy dziala.
+        // Cell edits were never persisted, so the grid is read-only. Deleting rows works.
         dataGridWords.ReadOnly = true;
 
         if (dataGridWords.Columns[nameof(WordRow.Id)] is { } idColumn)
@@ -146,7 +145,7 @@ public partial class WordingMain : Form
 
     void NotifyIconMouseClick(object? sender, MouseEventArgs e)
     {
-        // Prawy przycisk obsluguje menu kontekstowe, wiec reagujemy tylko na lewy.
+        // Right-click opens the context menu, so only react to the left button.
         if (e.Button == MouseButtons.Left)
         {
             ShowWindow();
@@ -168,7 +167,7 @@ public partial class WordingMain : Form
 
     void btnAddNewWord_Click(object sender, EventArgs e)
     {
-        // Dialog dostaje ten sam manager, wiec nowe slowko widac od razu.
+        // The dialog gets the same manager, so a new word shows up immediately.
         using var dialog = new NewWord(_manager);
 
         if (dialog.ShowDialog(this) == DialogResult.OK)

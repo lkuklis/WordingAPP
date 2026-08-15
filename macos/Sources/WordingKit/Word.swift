@@ -1,7 +1,7 @@
 import Foundation
 
 public struct Word: Codable, Equatable, Identifiable, Sendable {
-    /// GUID, zeby dwa urzadzenia dodajace slowko offline nie wygenerowaly tego samego identyfikatora.
+    /// A GUID, so two devices adding a word offline cannot produce the same identifier.
     public let id: UUID
     public var original: String
     public var translation: String
@@ -22,7 +22,7 @@ public struct Word: Codable, Equatable, Identifiable, Sendable {
         self.review = review
     }
 
-    /// Slowko jeszcze nigdy nieocenione.
+    /// A word that has never been graded.
     public var isNew: Bool { review.lastReviewedUtc == nil }
 
     public func isDue(at now: Date) -> Bool { review.dueUtc <= now }
@@ -31,10 +31,10 @@ public struct Word: Codable, Equatable, Identifiable, Sendable {
         case id, original, translation, createdUtc, review
     }
 
-    // Dekoder jest syntezowany - `UUID(uuidString:)` przyjmuje obie wielkosci liter.
-    // Wlasny jest tylko koder, bo System.Text.Json zapisuje GUID-y malymi literami,
-    // a Swift domyslnie wielkimi; bez tego pierwszy zapis z macOS przepisalby
-    // wszystkie identyfikatory w pliku.
+    // The decoder is synthesized - `UUID(uuidString:)` accepts either case. Only the
+    // encoder is hand-written, because System.Text.Json writes GUIDs in lower case
+    // while Swift defaults to upper case; without this the first save from macOS
+    // would rewrite every identifier in the file.
     public func encode(to encoder: any Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
 
@@ -46,7 +46,7 @@ public struct Word: Codable, Equatable, Identifiable, Sendable {
     }
 }
 
-/// Ksztalt pliku words.json - musi odpowiadac `Wording.Core.Storage.WordFile`.
+/// Shape of words.json - must match `Wording.Core.Storage.WordFile`.
 struct WordFile: Codable {
     var version: Int
     var words: [Word]

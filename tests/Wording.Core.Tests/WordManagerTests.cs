@@ -6,22 +6,21 @@ namespace Wording.Core.Tests;
 
 public class WordManagerTests
 {
-    static readonly DateTimeOffset Teraz = Fixtures.Teraz;
+    static readonly DateTimeOffset Now = Fixtures.Now;
 
-    static WordManager Zbuduj(TempDirectory dir) =>
-        new(new JsonWordStore(dir.JsonFile, Fixtures.Zegar()), Fixtures.Zegar(), new Random(1234));
+    static WordManager Build(TempDirectory dir) =>
+        new(new JsonWordStore(dir.JsonFile, Fixtures.Clock()), Fixtures.Clock(), new Random(1234));
 
     [Fact]
-    public void WspolnyMagazyn_ObaEkranyWidzaTeSameDaneBezOdswiezania()
+    public void SharedStore_BothScreensSeeTheSameDataWithoutReloading()
     {
-        // Naprawa bledu z wersji sprzed migracji: okno glowne i okienko dodawania
-        // mialy osobne repozytoria, wiec nowe slowko pojawialo sie dopiero po
-        // recznym przeladowaniu z dysku.
+        // Fix for a pre-migration bug: the main window and the add dialog had separate
+        // repositories, so a new word only appeared after a manual reload from disk.
         using var dir = new TempDirectory();
-        var store = new JsonWordStore(dir.JsonFile, Fixtures.Zegar());
+        var store = new JsonWordStore(dir.JsonFile, Fixtures.Clock());
 
-        var mainWindow = new WordManager(store, Fixtures.Zegar());
-        var addDialog = new WordManager(store, Fixtures.Zegar());
+        var mainWindow = new WordManager(store, Fixtures.Clock());
+        var addDialog = new WordManager(store, Fixtures.Clock());
 
         addDialog.AddWord("nimble", "zwinny");
 
@@ -29,68 +28,68 @@ public class WordManagerTests
     }
 
     [Fact]
-    public void AddWord_OdrzucaPusteSlowko()
+    public void AddWord_RejectsAnEmptyWord()
     {
         using var dir = new TempDirectory();
 
-        Assert.Throws<ArgumentException>(() => Zbuduj(dir).AddWord("   ", "zakres"));
+        Assert.Throws<ArgumentException>(() => Build(dir).AddWord("   ", "zakres"));
     }
 
     [Fact]
-    public void AddWord_OdrzucaPusteTlumaczenie()
+    public void AddWord_RejectsAnEmptyTranslation()
     {
         using var dir = new TempDirectory();
 
-        Assert.Throws<ArgumentException>(() => Zbuduj(dir).AddWord("scope", ""));
+        Assert.Throws<ArgumentException>(() => Build(dir).AddWord("scope", ""));
     }
 
     [Fact]
-    public void AddWord_PrzycinaBialeZnaki()
+    public void AddWord_TrimsWhitespace()
     {
         using var dir = new TempDirectory();
 
-        var word = Zbuduj(dir).AddWord("  scope  ", "\tzakres\n");
+        var word = Build(dir).AddWord("  scope  ", "\tzakres\n");
 
         Assert.Equal("scope", word.Original);
         Assert.Equal("zakres", word.Translation);
     }
 
     [Fact]
-    public void Grade_PrzeliczaTerminIUtrwalaGoNaDysku()
+    public void Grade_RecomputesTheDueDateAndPersistsIt()
     {
         using var dir = new TempDirectory();
-        var manager = Zbuduj(dir);
+        var manager = Build(dir);
         var word = manager.AddWord("scope", "zakres");
 
         Assert.True(manager.Grade(word.Id, ReviewGrade.Good));
 
-        var fromDisk = new JsonWordStore(dir.JsonFile, Fixtures.Zegar()).GetById(word.Id);
+        var fromDisk = new JsonWordStore(dir.JsonFile, Fixtures.Clock()).GetById(word.Id);
         Assert.NotNull(fromDisk);
         Assert.Equal(1, fromDisk.Review.Repetitions);
-        Assert.Equal(Teraz.AddDays(1), fromDisk.Review.DueUtc);
+        Assert.Equal(Now.AddDays(1), fromDisk.Review.DueUtc);
     }
 
     [Fact]
-    public void Grade_NieistniejaceId_ZwracaFalse()
+    public void Grade_UnknownId_ReturnsFalse()
     {
         using var dir = new TempDirectory();
 
-        Assert.False(Zbuduj(dir).Grade(Guid.NewGuid(), ReviewGrade.Good));
+        Assert.False(Build(dir).Grade(Guid.NewGuid(), ReviewGrade.Good));
     }
 
     [Fact]
-    public void NextWordToShow_PustaLista_ZwracaNull()
+    public void NextWordToShow_EmptyList_ReturnsNull()
     {
         using var dir = new TempDirectory();
 
-        Assert.Null(Zbuduj(dir).NextWordToShow());
+        Assert.Null(Build(dir).NextWordToShow());
     }
 
     [Fact]
-    public void NextWordToShow_ZwracaSlowkoZListy()
+    public void NextWordToShow_ReturnsAWordFromTheList()
     {
         using var dir = new TempDirectory();
-        var manager = Zbuduj(dir);
+        var manager = Build(dir);
         manager.AddWord("scope", "zakres");
         manager.AddWord("cater", "zaspokoic");
 
@@ -101,15 +100,15 @@ public class WordManagerTests
     }
 
     [Fact]
-    public void OcenioneJakoZnane_PrzestajeDominowacWRotacji()
+    public void WordsGradedAsKnown_StopDominatingTheRotation()
     {
-        // Sedno calego mechanizmu: to, co oceniamy jako znane, ma sie pokazywac rzadziej.
+        // The whole point of the mechanism: what we grade as known should show up less.
         using var dir = new TempDirectory();
-        var manager = Zbuduj(dir);
-        var known = manager.AddWord("znane", "known");
-        var unknown = manager.AddWord("nieznane", "unknown");
+        var manager = Build(dir);
+        var known = manager.AddWord("known", "znane");
+        var unknown = manager.AddWord("unknown", "nieznane");
 
-        // Znane przechodzi kilka udanych powtorek, wiec jego termin ucieka w przyszlosc.
+        // The known word passes a few successful reviews, so its due date moves away.
         for (var i = 0; i < 3; i++)
         {
             manager.Grade(known.Id, ReviewGrade.Good);
@@ -126,14 +125,14 @@ public class WordManagerTests
             }
         }
 
-        Assert.True(hits > Attempts * 0.8, $"nieznane slowko trafilo tylko {hits}/{Attempts} razy");
+        Assert.True(hits > Attempts * 0.8, $"the unknown word was picked only {hits}/{Attempts} times");
     }
 
     [Fact]
-    public void RemoveWord_UsuwaSlowkoIZwracaFalseDlaNieistniejacego()
+    public void RemoveWord_DeletesTheWordAndReturnsFalseForAnUnknownId()
     {
         using var dir = new TempDirectory();
-        var manager = Zbuduj(dir);
+        var manager = Build(dir);
         var word = manager.AddWord("scope", "zakres");
 
         Assert.True(manager.RemoveWord(word.Id));

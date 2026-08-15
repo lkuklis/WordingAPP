@@ -1,26 +1,25 @@
 import Foundation
 
-/// Wybiera nastepne slowko do pokazania.
+/// Picks the next word to show.
 ///
-/// Port `Wording.Core.Learning.WordSelector`. Celowo NIE bramkuje po terminie
-/// wymagalnosci, jak klasyczny SRS: aplikacja pokazuje slowko co kilka minut
-/// w tle, a nie w sesjach powtorek, wiec przy sztywnych terminach przez
-/// wiekszosc czasu nie mialaby czego wyswietlic. Zamiast tego losuje z wagami.
+/// A port of `Wording.Core.Learning.WordSelector`. It deliberately does NOT gate on the
+/// due date the way a conventional SRS would: this app shows a word every few minutes in
+/// the background rather than in review sessions, so due-date gating would leave it with
+/// nothing to display most of the time. Instead every word gets a weight.
 public enum WordSelector {
-    /// Slowko jeszcze nigdy nieocenione ma byc pokazywane czesto.
+    /// A word that has never been graded should show often.
     static let newWordWeight = 10.0
 
-    /// Waga slowka dokladnie w terminie. Kazdy dzien opoznienia dodaje 1.
+    /// Weight of a word exactly at its due date. Each day of delay adds 1.
     static let dueWeight = 1.0
 
-    /// Gorne ograniczenie opoznienia, zeby jedno zapomniane slowko sprzed roku
-    /// nie zdominowalo rotacji.
+    /// Cap on lateness, so one word forgotten a year ago cannot dominate the rotation.
     static let maxOverdueDays = 30.0
 
-    /// Dolna waga - mala, ale niezerowa, wiec nic nie wypada z rotacji.
+    /// Floor - small, but non-zero, so nothing drops out of rotation.
     static let minWeight = 0.02
 
-    /// Zwraca slowko do pokazania albo nil, jesli lista jest pusta.
+    /// Returns a word to show, or nil when the list is empty.
     public static func pickNext(
         from words: [Word],
         now: Date,
@@ -40,7 +39,7 @@ public enum WordSelector {
             }
         }
 
-        // Nieosiagalne poza bledami zaokraglen na sumie zmiennoprzecinkowej.
+        // Unreachable except for rounding error in the floating-point sum.
         return words.last
     }
 
@@ -49,7 +48,7 @@ public enum WordSelector {
         return pickNext(from: words, now: now, using: &generator)
     }
 
-    /// Waga slowka: im pilniejsze, tym wieksza szansa na wylosowanie.
+    /// Weight of a word: the more urgent it is, the likelier it is to be drawn.
     static func weight(for word: Word, now: Date) -> Double {
         guard !word.isNew else { return newWordWeight }
 
@@ -59,7 +58,7 @@ public enum WordSelector {
             return dueWeight + min(overdueDays, maxOverdueDays)
         }
 
-        // Slowko jeszcze niewymagalne - waga maleje, im dalej do terminu.
+        // Not due yet - the weight shrinks the further away the due date is.
         return max(minWeight, dueWeight / (1 - overdueDays))
     }
 }

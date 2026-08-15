@@ -1,9 +1,9 @@
 import Foundation
 
-/// Ustala, gdzie leza dane uzytkownika.
+/// Decides where the user's data lives.
 ///
-/// Musi wskazywac dokladnie to samo miejsce, co `Wording.Core.Storage.WordingPaths`
-/// po stronie .NET, bo obie aplikacje pracuja na jednym pliku.
+/// This must point at exactly the same place as `Wording.Core.Storage.WordingPaths`
+/// on the .NET side, because both apps work on one file.
 public enum WordingPaths {
     public static let appFolderName = "Wording"
     public static let dataFileName = "words.json"

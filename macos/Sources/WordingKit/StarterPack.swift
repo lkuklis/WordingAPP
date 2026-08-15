@@ -1,9 +1,9 @@
 import Foundation
 
-/// Startowy pakiet slowek EN->PL dolaczony do aplikacji.
+/// The starter word pack bundled with the app.
 ///
-/// Odpowiednik importu z WordsData.xml po stronie .NET, tyle ze w JSON -
-/// port na macOS celowo nie ma parsera starego formatu XML.
+/// The equivalent of the WordsData.xml import on the .NET side, but in JSON - the
+/// macOS port deliberately has no parser for the legacy XML format.
 public enum StarterPack {
     struct Entry: Decodable {
         let original: String
@@ -16,7 +16,7 @@ public enum StarterPack {
 
     public static let resourceName = "starter-pack"
 
-    /// Wczytuje pakiet startowy z zasobow pakietu.
+    /// Loads the starter pack from the bundle resources.
     public static func load() throws -> [(original: String, translation: String)] {
         guard let url = Bundle.module.url(forResource: resourceName, withExtension: "json") else {
             return []
@@ -29,10 +29,10 @@ public enum StarterPack {
 }
 
 extension WordStore {
-    /// Zasiewa magazyn pakietem startowym, ale wylacznie gdy jest pusty.
-    /// Nigdy nie nadpisuje danych, ktore juz sa - takze tych zapisanych
-    /// przez aplikacje .NET, bo obie pracuja na jednym pliku.
-    /// - Returns: liczba dodanych slowek.
+    /// Seeds the store with the starter pack, but only when it is empty. It never
+    /// overwrites data that is already there - including data written by the .NET app,
+    /// since both work on one file.
+    /// - Returns: how many words were added.
     @discardableResult
     public func seedIfEmpty(now: Date = Date()) throws -> Int {
         guard words.isEmpty else { return 0 }
@@ -41,7 +41,7 @@ extension WordStore {
 
         guard !pack.isEmpty else { return 0 }
 
-        // Jeden zapis zamiast jednego na slowko.
+        // One save instead of one per word.
         try append(pack.map {
             Word(original: $0.original, translation: $0.translation, createdUtc: now, review: .new(now: now))
         })

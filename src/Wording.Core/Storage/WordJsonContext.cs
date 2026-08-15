@@ -3,11 +3,12 @@ using System.Text.Json.Serialization;
 namespace Wording.Core.Storage;
 
 /// <summary>
-/// Kontekst serializacji generowany w czasie kompilacji.
+/// Serialization context generated at compile time.
 /// <para>
-/// Celowo zamiast serializacji przez refleksje: ta ostatnia przewraca sie w hostach,
-/// ktore ja wylaczaja (System.Text.Json.JsonSerializerIsReflectionEnabledByDefault=false),
-/// a takze pod trimmingiem i NativeAOT. Generator daje ten sam efekt bez refleksji.
+/// Deliberately used instead of reflection-based serialization: reflection throws in
+/// hosts that disable it (System.Text.Json.JsonSerializerIsReflectionEnabledByDefault=false),
+/// and breaks the same way under trimming and NativeAOT. The generator gives the same
+/// result with no reflection at all.
 /// </para>
 /// </summary>
 [JsonSourceGenerationOptions(

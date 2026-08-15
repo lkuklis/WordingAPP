@@ -1,25 +1,25 @@
 import Foundation
 
-/// Algorytm SM-2 (SuperMemo 2) jako czysta funkcja.
+/// The SM-2 (SuperMemo 2) algorithm as a pure function.
 ///
-/// Port `Wording.Core.Learning.SpacedRepetitionScheduler` - obie implementacje
-/// musza dawac identyczne liczby, bo pracuja na tym samym pliku danych.
+/// A port of `Wording.Core.Learning.SpacedRepetitionScheduler` - both implementations
+/// must produce identical numbers, because they work on the same data file.
 public enum SpacedRepetitionScheduler {
-    /// Odstep po pierwszej udanej powtorce.
+    /// Interval after the first successful review.
     static let firstIntervalDays = 1.0
 
-    /// Odstep po drugiej udanej powtorce.
+    /// Interval after the second successful review.
     static let secondIntervalDays = 6.0
 
-    /// Po ocenie `again` slowko wraca po chwili, a nie natychmiast - inaczej
-    /// zablokowaloby cala rotacje, bo byloby stale najbardziej przeterminowane.
+    /// After `again` a word comes back shortly, not instantly - otherwise it would be
+    /// permanently the most overdue word and would block the whole rotation.
     static let relearnDelay: TimeInterval = 10 * 60
 
     public static func apply(_ current: ReviewState, grade: ReviewGrade, now: Date) -> ReviewState {
         let quality = grade.rawValue
         let easeFactor = nextEaseFactor(current.easeFactor, quality: quality)
 
-        // SM-2 traktuje ocene ponizej 3 jako nietrafiona.
+        // SM-2 treats anything below 3 as a failed recall.
         guard quality >= 3 else {
             return ReviewState(
                 repetitions: 0,
@@ -49,7 +49,7 @@ public enum SpacedRepetitionScheduler {
         )
     }
 
-    /// Oryginalny wzor SM-2: EF' = EF + (0.1 - (5-q) * (0.08 + (5-q) * 0.02)).
+    /// The original SM-2 formula: EF' = EF + (0.1 - (5-q) * (0.08 + (5-q) * 0.02)).
     static func nextEaseFactor(_ easeFactor: Double, quality: Int) -> Double {
         let delta = Double(5 - quality)
         let updated = easeFactor + (0.1 - delta * (0.08 + delta * 0.02))

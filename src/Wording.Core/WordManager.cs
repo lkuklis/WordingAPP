@@ -4,11 +4,11 @@ using Wording.Core.Storage;
 namespace Wording.Core;
 
 /// <summary>
-/// Fasada dla warstwy UI: lista slowek, dodawanie, usuwanie, wybor nastepnego
-/// slowka do pokazania i ocena powtorki.
+/// The façade the UI talks to: list words, add, remove, pick the next word to show,
+/// and grade a review.
 /// <para>
-/// Magazyn przychodzi przez konstruktor, zeby caly proces wspoldzielil jedna
-/// instancje - inaczej kazdy ekran pisalby przez wlasna kopie danych w pamieci.
+/// The store is injected so the whole process shares one instance - otherwise each
+/// screen would write through its own in-memory copy.
 /// </para>
 /// </summary>
 public sealed class WordManager
@@ -28,20 +28,21 @@ public sealed class WordManager
 
     public IReadOnlyList<Word> GetWords() => _store.GetAll();
 
-    /// <exception cref="ArgumentException">Gdy ktorakolwiek ze stron jest pusta.</exception>
+    /// <exception cref="ArgumentException">When either side is empty.</exception>
     public Word AddWord(string original, string translation)
     {
         var trimmedOriginal = (original ?? string.Empty).Trim();
         var trimmedTranslation = (translation ?? string.Empty).Trim();
 
+        // The message is deliberately terse: the UI owns the user-facing wording.
         if (trimmedOriginal.Length == 0)
         {
-            throw new ArgumentException("Slowko nie moze byc puste.", nameof(original));
+            throw new ArgumentException("The word must not be empty.", nameof(original));
         }
 
         if (trimmedTranslation.Length == 0)
         {
-            throw new ArgumentException("Tlumaczenie nie moze byc puste.", nameof(translation));
+            throw new ArgumentException("The translation must not be empty.", nameof(translation));
         }
 
         return _store.Add(trimmedOriginal, trimmedTranslation);
@@ -49,12 +50,12 @@ public sealed class WordManager
 
     public bool RemoveWord(Guid id) => _store.Remove(id);
 
-    /// <summary>Slowko, ktore powinno teraz trafic do powiadomienia. Null, gdy lista jest pusta.</summary>
+    /// <summary>The word that should go into the notification now. Null when the list is empty.</summary>
     public Word? NextWordToShow() =>
         WordSelector.PickNext(_store.GetAll(), _clock.GetUtcNow(), _random);
 
-    /// <summary>Zapisuje ocene powtorki i przelicza termin nastepnego pokazania.</summary>
-    /// <returns>False, gdy slowka o takim id juz nie ma.</returns>
+    /// <summary>Records a review grade and recomputes when the word is due next.</summary>
+    /// <returns>False when no word with that id exists any more.</returns>
     public bool Grade(Guid id, ReviewGrade grade)
     {
         var word = _store.GetById(id);

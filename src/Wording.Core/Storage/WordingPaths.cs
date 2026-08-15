@@ -1,12 +1,12 @@
 namespace Wording.Core.Storage;
 
 /// <summary>
-/// Ustala, gdzie leza dane uzytkownika.
+/// Decides where the user's data lives.
 /// <para>
-/// Stara wersja czytala "WordsData.xml" wzgledem katalogu roboczego procesu, wiec
-/// uruchomienie skrotem z innego miejsca wywalalo aplikacje, a dane siedzialy
-/// obok pliku exe (czyli ginely przy kazdej aktualizacji). Teraz jest to katalog
-/// danych uzytkownika, wlasciwy dla systemu.
+/// The pre-2026 version read "WordsData.xml" relative to the process working directory,
+/// so launching from anywhere else crashed the app and the data sat next to the
+/// executable (and was lost on every update). It is now the platform's per-user data
+/// directory.
 /// </para>
 /// </summary>
 public static class WordingPaths
@@ -15,19 +15,18 @@ public static class WordingPaths
 
     public const string DataFileName = "words.json";
 
-    /// <summary>Nazwa pliku w starym formacie XML, z ktorego robimy jednorazowy import.</summary>
+    /// <summary>Name of the legacy XML file, used for the one-off import.</summary>
     public const string LegacyDataFileName = "WordsData.xml";
 
     /// <summary>
-    /// Katalog danych: %APPDATA%\Wording na Windows,
-    /// ~/Library/Application Support/Wording na macOS.
+    /// %APPDATA%\Wording on Windows, ~/Library/Application Support/Wording on macOS.
     /// </summary>
     public static string DataDirectory()
     {
         if (OperatingSystem.IsMacOS())
         {
-            // Na macOS SpecialFolder.ApplicationData wskazuje ~/.config, a natywne
-            // miejsce na dane aplikacji to Library/Application Support.
+            // On macOS SpecialFolder.ApplicationData points at ~/.config, while the
+            // native location for application data is Library/Application Support.
             return Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
                 "Library",

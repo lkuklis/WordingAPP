@@ -4,20 +4,20 @@ using Wording.Core.Learning;
 namespace Wording.Core.Storage;
 
 /// <summary>
-/// Czyta stary format &lt;AllWords&gt;/&lt;Word&gt;/&lt;Id|Original|Translated&gt;.
-/// Tylko do odczytu - sluzy wylacznie jednorazowej migracji na JSON.
+/// Reads the legacy &lt;AllWords&gt;/&lt;Word&gt;/&lt;Id|Original|Translated&gt; format.
+/// Read-only: it exists purely for the one-off migration to JSON.
 /// </summary>
 public static class LegacyXmlImporter
 {
     public static IReadOnlyList<Word> Read(string xmlPath, DateTimeOffset now)
     {
-        var dokument = XDocument.Load(xmlPath);
+        var document = XDocument.Load(xmlPath);
 
-        return dokument.Descendants("Word")
+        return document.Descendants("Word")
             .Select(element => new Word
             {
-                // Stare liczbowe Id celowo odrzucamy - byly przetwarzane po kasowaniu
-                // wpisow, wiec nie nadaja sie na trwaly identyfikator.
+                // The old numeric ids are dropped on purpose: they were recycled when
+                // entries were deleted, so they are unusable as stable identifiers.
                 Id = Guid.NewGuid(),
                 Original = (string?)element.Element("Original") ?? string.Empty,
                 Translation = (string?)element.Element("Translated") ?? string.Empty,

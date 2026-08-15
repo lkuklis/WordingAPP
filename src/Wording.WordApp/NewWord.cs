@@ -8,7 +8,7 @@ public partial class NewWord : Form
 {
     readonly WordManager _manager;
 
-    /// <summary>Manager przychodzi z zewnatrz, zeby dialog pisal do tego samego magazynu co okno glowne.</summary>
+    /// <summary>The manager is injected so the dialog writes to the same store as the main window.</summary>
     public NewWord(WordManager manager)
     {
         ArgumentNullException.ThrowIfNull(manager);
@@ -35,7 +35,7 @@ public partial class NewWord : Form
             return;
         }
 
-        // Ustawienie DialogResult samo zamyka okno modalne.
+        // Setting DialogResult closes the modal dialog on its own.
         DialogResult = DialogResult.OK;
     }
 

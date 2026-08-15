@@ -1,30 +1,30 @@
 namespace Wording.Core.Learning;
 
 /// <summary>
-/// Wybiera nastepne slowko do pokazania.
+/// Picks the next word to show.
 /// <para>
-/// Celowo NIE bramkuje po terminie wymagalnosci, jak klasyczny SRS. Ta aplikacja
-/// wyswietla slowko co kilka minut w tle, a nie w sesjach powtorek - przy sztywnych
-/// terminach przez wiekszosc czasu nie mialaby czego pokazac. Zamiast tego losuje
-/// z wagami: slowka przeterminowane dominuja, dobrze znane pojawiaja sie rzadko,
-/// ale nigdy nie znikaja calkiem z rotacji.
+/// It deliberately does NOT gate on the due date the way a conventional SRS would.
+/// This app shows a word every few minutes in the background rather than in review
+/// sessions, so due-date gating would leave it with nothing to display most of the
+/// time. Instead every word gets a weight: overdue words dominate, well-known ones
+/// appear rarely, but nothing ever leaves the rotation entirely.
 /// </para>
 /// </summary>
 public static class WordSelector
 {
-    /// <summary>Slowko jeszcze nieocenione ma byc pokazywane czesto, zeby szybko weszlo do obiegu.</summary>
+    /// <summary>A word that has never been graded should show often, so it enters rotation quickly.</summary>
     internal const double NewWordWeight = 10.0;
 
-    /// <summary>Waga slowka dokladnie w terminie. Kazdy dzien opoznienia dodaje 1.</summary>
+    /// <summary>Weight of a word exactly at its due date. Each day of delay adds 1.</summary>
     internal const double DueWeight = 1.0;
 
-    /// <summary>Gorne ograniczenie opoznienia, zeby jedno zapomniane slowko sprzed roku nie zdominowalo rotacji.</summary>
+    /// <summary>Cap on lateness, so one word forgotten a year ago cannot dominate the rotation.</summary>
     internal const double MaxOverdueDays = 30.0;
 
-    /// <summary>Dolna waga slowka swiezo powtorzonego - mala, ale niezerowa, wiec nic nie wypada z rotacji.</summary>
+    /// <summary>Floor for a just-reviewed word - small, but non-zero, so nothing drops out of rotation.</summary>
     internal const double MinWeight = 0.02;
 
-    /// <summary>Zwraca slowko do pokazania albo null, jesli lista jest pusta.</summary>
+    /// <summary>Returns a word to show, or null when the list is empty.</summary>
     public static Word? PickNext(IReadOnlyList<Word> words, DateTimeOffset now, Random random)
     {
         ArgumentNullException.ThrowIfNull(words);
@@ -55,11 +55,11 @@ public static class WordSelector
             }
         }
 
-        // Nieosiagalne poza bledami zaokraglen na sumie zmiennoprzecinkowej.
+        // Unreachable except for rounding error in the floating-point sum.
         return words[^1];
     }
 
-    /// <summary>Waga slowka: im pilniejsze, tym wieksza szansa na wylosowanie.</summary>
+    /// <summary>Weight of a word: the more urgent it is, the likelier it is to be drawn.</summary>
     internal static double Weight(Word word, DateTimeOffset now)
     {
         if (word.IsNew)
@@ -74,7 +74,7 @@ public static class WordSelector
             return DueWeight + Math.Min(overdueDays, MaxOverdueDays);
         }
 
-        // Slowko jeszcze niewymagalne - waga maleje, im dalej do terminu.
+        // Not due yet - the weight shrinks the further away the due date is.
         return Math.Max(MinWeight, DueWeight / (1 - overdueDays));
     }
 }

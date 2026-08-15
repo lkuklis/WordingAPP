@@ -4,12 +4,12 @@ import PackageDescription
 let package = Package(
     name: "Wording",
     platforms: [
-        // MenuBarExtra wymaga macOS 13; bierzemy 14 dla nowszego API SwiftUI.
+        // MenuBarExtra needs macOS 13; we take 14 for the newer SwiftUI API.
         .macOS(.v14)
     ],
     targets: [
-        // Logika: port Wording.Core. Czyta i zapisuje dokladnie ten sam
-        // words.json, co powloka .NET - format jest kontraktem miedzy nimi.
+        // Logic: a port of Wording.Core. It reads and writes exactly the same
+        // words.json as the .NET app - the format is the contract between them.
         .target(
             name: "WordingKit",
             resources: [.process("Resources")]

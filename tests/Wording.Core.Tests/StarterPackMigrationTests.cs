@@ -3,26 +3,27 @@ using Wording.Core.Storage;
 namespace Wording.Core.Tests;
 
 /// <summary>
-/// Import na prawdziwym pakiecie startowym z repozytorium, nie na danych syntetycznych.
+/// Runs the import against the real starter pack from the repository rather than
+/// against synthetic data.
 /// </summary>
 public class StarterPackMigrationTests
 {
-    static string PakietStartowy =>
+    static string StarterPack =>
         Path.Combine(AppContext.BaseDirectory, WordingPaths.LegacyDataFileName);
 
     [Fact]
-    public void PakietStartowy_JestDostepnyObokBinarki()
+    public void StarterPack_ShipsNextToTheBinary()
     {
-        Assert.True(File.Exists(PakietStartowy), $"nie znaleziono {PakietStartowy}");
+        Assert.True(File.Exists(StarterPack), $"could not find {StarterPack}");
     }
 
     [Fact]
-    public void PakietStartowy_ImportujeSieWCalosciIBezPustychWpisow()
+    public void StarterPack_ImportsCompletelyAndWithoutBlankEntries()
     {
         using var dir = new TempDirectory();
-        var store = new JsonWordStore(dir.JsonFile, Fixtures.Zegar());
+        var store = new JsonWordStore(dir.JsonFile, Fixtures.Clock());
 
-        Assert.Equal(38, store.ImportLegacyIfEmpty(PakietStartowy));
+        Assert.Equal(38, store.ImportLegacyIfEmpty(StarterPack));
 
         var words = store.GetAll();
 
@@ -32,7 +33,7 @@ public class StarterPackMigrationTests
             Assert.NotEmpty(word.Original);
             Assert.NotEmpty(word.Translation);
             Assert.True(word.IsNew);
-            Assert.True(word.IsDue(Fixtures.Teraz));
+            Assert.True(word.IsDue(Fixtures.Now));
         });
 
         Assert.Contains(words, w => w.Original == "scope" && w.Translation == "zakres");
@@ -40,13 +41,13 @@ public class StarterPackMigrationTests
     }
 
     [Fact]
-    public void PakietStartowy_ZachowujePolskieZnakiPoPrzejsciuPrzezJson()
+    public void StarterPack_KeepsNonAsciiCharactersThroughJson()
     {
         using var dir = new TempDirectory();
-        new JsonWordStore(dir.JsonFile, Fixtures.Zegar()).ImportLegacyIfEmpty(PakietStartowy);
+        new JsonWordStore(dir.JsonFile, Fixtures.Clock()).ImportLegacyIfEmpty(StarterPack);
 
-        // Ponowny odczyt z dysku - sprawdza cala droge tam i z powrotem.
-        var reloaded = new JsonWordStore(dir.JsonFile, Fixtures.Zegar()).GetAll();
+        // Re-read from disk - this exercises the whole round trip.
+        var reloaded = new JsonWordStore(dir.JsonFile, Fixtures.Clock()).GetAll();
 
         Assert.Contains(reloaded, w => w.Translation.Contains("domyślnie"));
         Assert.Contains(reloaded, w => w.Translation.Contains("tłumić"));

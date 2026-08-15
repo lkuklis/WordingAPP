@@ -4,128 +4,128 @@ namespace Wording.Core.Tests;
 
 public class SpacedRepetitionSchedulerTests
 {
-    static readonly DateTimeOffset Teraz = Fixtures.Teraz;
+    static readonly DateTimeOffset Now = Fixtures.Now;
 
-    static ReviewState Nowe() => ReviewState.New(Teraz);
+    static ReviewState Fresh() => ReviewState.New(Now);
 
     [Fact]
-    public void PierwszaUdanaPowtorka_DajeInterwalJednegoDnia()
+    public void FirstSuccessfulReview_SchedulesOneDayLater()
     {
-        var stan = SpacedRepetitionScheduler.Apply(Nowe(), ReviewGrade.Good, Teraz);
+        var state = SpacedRepetitionScheduler.Apply(Fresh(), ReviewGrade.Good, Now);
 
-        Assert.Equal(1, stan.Repetitions);
-        Assert.Equal(1.0, stan.IntervalDays);
-        Assert.Equal(Teraz.AddDays(1), stan.DueUtc);
-        Assert.Equal(Teraz, stan.LastReviewedUtc);
+        Assert.Equal(1, state.Repetitions);
+        Assert.Equal(1.0, state.IntervalDays);
+        Assert.Equal(Now.AddDays(1), state.DueUtc);
+        Assert.Equal(Now, state.LastReviewedUtc);
     }
 
     [Fact]
-    public void DrugaUdanaPowtorka_DajeInterwalSzesciuDni()
+    public void SecondSuccessfulReview_SchedulesSixDaysLater()
     {
-        var stan = Nowe();
-        stan = SpacedRepetitionScheduler.Apply(stan, ReviewGrade.Good, Teraz);
-        stan = SpacedRepetitionScheduler.Apply(stan, ReviewGrade.Good, Teraz.AddDays(1));
+        var state = Fresh();
+        state = SpacedRepetitionScheduler.Apply(state, ReviewGrade.Good, Now);
+        state = SpacedRepetitionScheduler.Apply(state, ReviewGrade.Good, Now.AddDays(1));
 
-        Assert.Equal(2, stan.Repetitions);
-        Assert.Equal(6.0, stan.IntervalDays);
+        Assert.Equal(2, state.Repetitions);
+        Assert.Equal(6.0, state.IntervalDays);
     }
 
     [Fact]
-    public void TrzeciaUdanaPowtorka_MnozyInterwalPrzezLatwosc()
+    public void ThirdSuccessfulReview_MultipliesIntervalByEaseFactor()
     {
-        var stan = Nowe();
-        stan = SpacedRepetitionScheduler.Apply(stan, ReviewGrade.Good, Teraz);
-        stan = SpacedRepetitionScheduler.Apply(stan, ReviewGrade.Good, Teraz.AddDays(1));
-        var przedTrzecia = stan;
+        var state = Fresh();
+        state = SpacedRepetitionScheduler.Apply(state, ReviewGrade.Good, Now);
+        state = SpacedRepetitionScheduler.Apply(state, ReviewGrade.Good, Now.AddDays(1));
+        var beforeThird = state;
 
-        stan = SpacedRepetitionScheduler.Apply(stan, ReviewGrade.Good, Teraz.AddDays(7));
+        state = SpacedRepetitionScheduler.Apply(state, ReviewGrade.Good, Now.AddDays(7));
 
-        Assert.Equal(3, stan.Repetitions);
-        Assert.Equal(przedTrzecia.IntervalDays * stan.EaseFactor, stan.IntervalDays, precision: 10);
+        Assert.Equal(3, state.Repetitions);
+        Assert.Equal(beforeThird.IntervalDays * state.EaseFactor, state.IntervalDays, precision: 10);
     }
 
     [Fact]
-    public void Good_PodnosiLatwosc()
+    public void Good_RaisesEaseFactor()
     {
-        var stan = SpacedRepetitionScheduler.Apply(Nowe(), ReviewGrade.Good, Teraz);
+        var state = SpacedRepetitionScheduler.Apply(Fresh(), ReviewGrade.Good, Now);
 
-        // Wzor SM-2 dla q=5 daje dokladnie +0.1.
-        Assert.Equal(ReviewState.DefaultEaseFactor + 0.1, stan.EaseFactor, precision: 10);
+        // The SM-2 formula for q=5 gives exactly +0.1.
+        Assert.Equal(ReviewState.DefaultEaseFactor + 0.1, state.EaseFactor, precision: 10);
     }
 
     [Fact]
-    public void Hard_ObnizaLatwoscAleZaliczaPowtorke()
+    public void Hard_LowersEaseFactorButStillCountsAsSuccess()
     {
-        var stan = SpacedRepetitionScheduler.Apply(Nowe(), ReviewGrade.Hard, Teraz);
+        var state = SpacedRepetitionScheduler.Apply(Fresh(), ReviewGrade.Hard, Now);
 
-        Assert.True(stan.EaseFactor < ReviewState.DefaultEaseFactor);
-        Assert.Equal(1, stan.Repetitions);
-        Assert.Equal(0, stan.Lapses);
+        Assert.True(state.EaseFactor < ReviewState.DefaultEaseFactor);
+        Assert.Equal(1, state.Repetitions);
+        Assert.Equal(0, state.Lapses);
     }
 
     [Fact]
-    public void Again_ZerujeLicznikPowtorekIZwiekszaLapses()
+    public void Again_ResetsRepetitionsAndCountsALapse()
     {
-        var stan = Nowe();
-        stan = SpacedRepetitionScheduler.Apply(stan, ReviewGrade.Good, Teraz);
-        stan = SpacedRepetitionScheduler.Apply(stan, ReviewGrade.Good, Teraz.AddDays(1));
+        var state = Fresh();
+        state = SpacedRepetitionScheduler.Apply(state, ReviewGrade.Good, Now);
+        state = SpacedRepetitionScheduler.Apply(state, ReviewGrade.Good, Now.AddDays(1));
 
-        stan = SpacedRepetitionScheduler.Apply(stan, ReviewGrade.Again, Teraz.AddDays(7));
+        state = SpacedRepetitionScheduler.Apply(state, ReviewGrade.Again, Now.AddDays(7));
 
-        Assert.Equal(0, stan.Repetitions);
-        Assert.Equal(0, stan.IntervalDays);
-        Assert.Equal(1, stan.Lapses);
+        Assert.Equal(0, state.Repetitions);
+        Assert.Equal(0, state.IntervalDays);
+        Assert.Equal(1, state.Lapses);
     }
 
     [Fact]
-    public void Again_UstawiaTerminNaZaKilkaMinutAJednakNieNatychmiast()
+    public void Again_SchedulesShortlyAfterButNotImmediately()
     {
-        // Termin "teraz" sprawilby, ze zapomniane slowko jest stale najbardziej
-        // przeterminowane i zablokowaloby cala rotacje.
-        var stan = SpacedRepetitionScheduler.Apply(Nowe(), ReviewGrade.Again, Teraz);
+        // A due date of "now" would make a forgotten word permanently the most
+        // overdue one and would block the whole rotation.
+        var state = SpacedRepetitionScheduler.Apply(Fresh(), ReviewGrade.Again, Now);
 
-        Assert.True(stan.DueUtc > Teraz);
-        Assert.True(stan.DueUtc <= Teraz.AddHours(1));
+        Assert.True(state.DueUtc > Now);
+        Assert.True(state.DueUtc <= Now.AddHours(1));
     }
 
     [Fact]
-    public void Latwosc_NieSpadaPonizejProgu()
+    public void EaseFactor_NeverDropsBelowTheFloor()
     {
-        var stan = Nowe();
+        var state = Fresh();
 
         for (var i = 0; i < 50; i++)
         {
-            stan = SpacedRepetitionScheduler.Apply(stan, ReviewGrade.Again, Teraz.AddDays(i));
+            state = SpacedRepetitionScheduler.Apply(state, ReviewGrade.Again, Now.AddDays(i));
         }
 
-        Assert.Equal(ReviewState.MinimumEaseFactor, stan.EaseFactor);
+        Assert.Equal(ReviewState.MinimumEaseFactor, state.EaseFactor);
     }
 
     [Fact]
-    public void Apply_NieMutujeStanuWejsciowego()
+    public void Apply_DoesNotMutateTheInputState()
     {
-        var przed = Nowe();
+        var before = Fresh();
 
-        SpacedRepetitionScheduler.Apply(przed, ReviewGrade.Good, Teraz);
+        SpacedRepetitionScheduler.Apply(before, ReviewGrade.Good, Now);
 
-        Assert.Equal(0, przed.Repetitions);
-        Assert.Equal(0, przed.IntervalDays);
-        Assert.Null(przed.LastReviewedUtc);
+        Assert.Equal(0, before.Repetitions);
+        Assert.Equal(0, before.IntervalDays);
+        Assert.Null(before.LastReviewedUtc);
     }
 
     [Fact]
-    public void DobrzeZnaneSlowko_SzybkoOsiagaDlugieInterwaly()
+    public void WellKnownWord_ReachesLongIntervalsQuickly()
     {
-        var stan = Nowe();
-        var czas = Teraz;
+        var state = Fresh();
+        var time = Now;
 
         for (var i = 0; i < 6; i++)
         {
-            stan = SpacedRepetitionScheduler.Apply(stan, ReviewGrade.Good, czas);
-            czas = stan.DueUtc;
+            state = SpacedRepetitionScheduler.Apply(state, ReviewGrade.Good, time);
+            time = state.DueUtc;
         }
 
-        // Po szesciu bezbledych powtorkach slowko ma wracac nie czesciej niz raz na kwartal.
-        Assert.True(stan.IntervalDays > 90, $"interwal wyniosl {stan.IntervalDays} dni");
+        // After six flawless reviews a word should come back no more than once a quarter.
+        Assert.True(state.IntervalDays > 90, $"interval was {state.IntervalDays} days");
     }
 }

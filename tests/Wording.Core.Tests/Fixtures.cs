@@ -4,15 +4,15 @@ using Wording.Core.Storage;
 
 namespace Wording.Core.Tests;
 
-/// <summary>Wspolny punkt odniesienia dla wszystkich testow - jedna data i jeden zegar.</summary>
+/// <summary>A single reference point for every test: one instant and one clock.</summary>
 static class Fixtures
 {
-    public static readonly DateTimeOffset Teraz = new(2026, 8, 14, 12, 0, 0, TimeSpan.Zero);
+    public static readonly DateTimeOffset Now = new(2026, 8, 14, 12, 0, 0, TimeSpan.Zero);
 
-    public static FakeTimeProvider Zegar() => new(Teraz);
+    public static FakeTimeProvider Clock() => new(Now);
 }
 
-/// <summary>Izolowany katalog na dane, sprzatany po tescie.</summary>
+/// <summary>An isolated data directory, removed after the test.</summary>
 sealed class TempDirectory : IDisposable
 {
     public string Path { get; }
@@ -30,7 +30,7 @@ sealed class TempDirectory : IDisposable
 
     public string XmlFile => System.IO.Path.Combine(Path, WordingPaths.LegacyDataFileName);
 
-    /// <summary>Tworzy plik w starym formacie XML, uzywany w testach migracji.</summary>
+    /// <summary>Writes a file in the legacy XML format, used by the import tests.</summary>
     public string WriteLegacyXml(params (int Id, string Original, string Translated)[] words)
     {
         new XDocument(

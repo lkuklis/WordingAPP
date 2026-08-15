@@ -14,8 +14,8 @@ static class Program
 
         var settings = WordingSettings.Load();
 
-        // Jeden magazyn i jeden manager na caly proces - kazdy ekran dostaje
-        // te sama instancje, inaczej pisalyby przez osobne kopie w pamieci.
+        // One store and one manager for the whole process - every screen gets the
+        // same instance, otherwise they would write through separate in-memory copies.
         var store = new JsonWordStore(settings.ResolveDataFile());
         store.ImportLegacyIfEmpty(WordingSettings.FindLegacyXml());
 

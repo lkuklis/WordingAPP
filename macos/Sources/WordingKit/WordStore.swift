@@ -1,10 +1,10 @@
 import Foundation
 
-/// Magazyn slowek w pliku JSON.
+/// Stores words in a JSON file.
 ///
-/// Port `Wording.Core.Storage.JsonWordStore`. Zapis jest atomowy (plik
-/// tymczasowy + podmiana), zeby przerwanie procesu nie zostawilo uciętego
-/// pliku z danymi uzytkownika.
+/// A port of `Wording.Core.Storage.JsonWordStore`. Saving is atomic (temporary file,
+/// then replace), so interrupting the process cannot leave the user with a truncated
+/// data file.
 public final class WordStore {
     public let fileURL: URL
     public private(set) var words: [Word] = []
@@ -14,7 +14,7 @@ public final class WordStore {
         try reload()
     }
 
-    /// Wczytuje ponownie z dysku, odrzucajac stan z pamieci.
+    /// Re-reads from disk, discarding the in-memory state.
     public func reload() throws {
         guard FileManager.default.fileExists(atPath: fileURL.path(percentEncoded: false)) else {
             words = []
@@ -61,7 +61,7 @@ public final class WordStore {
         return true
     }
 
-    /// Zapisuje zmiany w slowku juz obecnym w magazynie (np. po ocenie powtorki).
+    /// Persists changes to a word already in the store (for example after grading).
     @discardableResult
     public func update(_ word: Word) throws -> Bool {
         guard let index = words.firstIndex(where: { $0.id == word.id }) else {
@@ -74,7 +74,7 @@ public final class WordStore {
         return true
     }
 
-    /// Dopisuje slowka jednym zapisem - uzywane przy zasiewie pakietu startowego.
+    /// Appends words in a single save - used when seeding the starter pack.
     func append(_ newWords: [Word]) throws {
         words.append(contentsOf: newWords)
         try save()
@@ -87,7 +87,7 @@ public final class WordStore {
         let payload = WordFile(version: WordFile.currentVersion, words: words)
         let data = try WordingJSON.encoder.encode(payload)
 
-        // Zapis obok, potem podmiana - w razie awarii oryginal zostaje nietkniety.
+        // Write alongside, then swap - a crash mid-write leaves the original intact.
         let temporary = fileURL.appendingPathExtension("tmp")
         try data.write(to: temporary, options: .atomic)
         _ = try FileManager.default.replaceItemAt(fileURL, withItemAt: temporary)

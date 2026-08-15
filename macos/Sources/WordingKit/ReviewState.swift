@@ -1,31 +1,31 @@
 import Foundation
 
 extension TimeInterval {
-    /// Doba w sekundach. Wspolna dla schedulera i selektora, zeby zaden z nich
-    /// nie musial siegac po detal konwersji do sasiedniego typu.
+    /// A day in seconds. Shared by the scheduler and the selector so neither has to
+    /// reach into the other for a unit conversion.
     public static let day: TimeInterval = 24 * 60 * 60
 }
 
-/// Ocena, jaka uzytkownik wystawia sobie po zobaczeniu slowka.
-/// Wartosci odpowiadaja skali jakosci SM-2 (0-5), tak samo jak w wersji .NET.
+/// How well the user recalled a word. The values are SM-2 quality scores (0-5),
+/// matching the .NET side.
 public enum ReviewGrade: Int, Sendable {
-    /// Nie pamietam - powtorki startuja od nowa.
+    /// Forgotten - the repetition count starts over.
     case again = 0
-    /// Z trudem, ale trafione.
+    /// Recalled, but with effort.
     case hard = 3
-    /// Pamietam bez wahania.
+    /// Recalled without hesitation.
     case good = 5
 }
 
-/// Stan powtorek pojedynczego slowka.
+/// Review state of a single word.
 ///
-/// Niemutowalny - `SpacedRepetitionScheduler` zwraca nowy stan zamiast
-/// modyfikowac istniejacy, dzieki czemu algorytm jest czysta funkcja.
+/// Immutable - `SpacedRepetitionScheduler` returns a new state instead of mutating
+/// this one, which keeps the algorithm a pure function.
 public struct ReviewState: Codable, Equatable, Sendable {
-    /// Startowa latwosc wg SM-2.
+    /// Starting ease factor, per SM-2.
     public static let defaultEaseFactor = 2.5
 
-    /// Dolny prog latwosci wg SM-2.
+    /// Lower bound on the ease factor, per SM-2.
     public static let minimumEaseFactor = 1.3
 
     public var repetitions: Int
@@ -51,7 +51,7 @@ public struct ReviewState: Codable, Equatable, Sendable {
         self.lapses = lapses
     }
 
-    /// Stan swiezo dodanego slowka: wymagalne natychmiast.
+    /// State of a freshly added word: due immediately.
     public static func new(now: Date) -> ReviewState {
         ReviewState(dueUtc: now)
     }

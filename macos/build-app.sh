@@ -1,22 +1,21 @@
 #!/bin/bash
-# Sklada Wording.app z pliku wykonywalnego zbudowanego przez SwiftPM.
+# Assembles Wording.app from the executable built by SwiftPM.
 #
-# Pakiet jest konieczny, a nie kosmetyczny: UNUserNotificationCenter przewraca
-# sie w golym pliku wykonywalnym, bo nie ma identyfikatora pakietu. Dopiero
-# zapakowana i podpisana aplikacja dostaje wlasny wpis w Ustawieniach ->
-# Powiadomienia i moze cokolwiek wyswietlic.
+# The bundle is required, not cosmetic: UNUserNotificationCenter traps in a bare
+# executable because there is no bundle identifier. Only a bundled, signed app gets
+# its own entry under Settings -> Notifications and can display anything at all.
 set -euo pipefail
 
-KATALOG="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-KONFIGURACJA="${1:-release}"
-APP="$KATALOG/build/Wording.app"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONFIGURATION="${1:-release}"
+APP="$SCRIPT_DIR/build/Wording.app"
 
-echo "==> Kompilacja ($KONFIGURACJA)"
-swift build -c "$KONFIGURACJA" --package-path "$KATALOG"
+echo "==> Building ($CONFIGURATION)"
+swift build -c "$CONFIGURATION" --package-path "$SCRIPT_DIR"
 
-BIN="$(swift build -c "$KONFIGURACJA" --package-path "$KATALOG" --show-bin-path)/WordingApp"
+BIN="$(swift build -c "$CONFIGURATION" --package-path "$SCRIPT_DIR" --show-bin-path)/WordingApp"
 
-echo "==> Skladanie pakietu"
+echo "==> Assembling the bundle"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
@@ -43,17 +42,17 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
     <string>2</string>
     <key>LSMinimumSystemVersion</key>
     <string>14.0</string>
-    <!-- Aplikacja zyje wylacznie w pasku menu - bez ikony w Docku. -->
+    <!-- The app lives only in the menu bar - no Dock icon. -->
     <key>LSUIElement</key>
     <true/>
 </dict>
 </plist>
 PLIST
 
-echo "==> Podpisywanie (ad-hoc)"
-# Bez podpisu macOS nie przydziela stabilnej tozsamosci, wiec zgoda na
-# powiadomienia gubilaby sie przy kazdym uruchomieniu.
+echo "==> Signing (ad-hoc)"
+# Without a signature macOS does not assign a stable identity, so notification
+# permission would be lost on every launch.
 codesign --force --sign - "$APP" >/dev/null 2>&1
 
-echo "==> Gotowe: $APP"
-echo "    uruchom:  open \"$APP\""
+echo "==> Done: $APP"
+echo "    run with: open \"$APP\""

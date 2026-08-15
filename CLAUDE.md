@@ -114,6 +114,8 @@ Two mistakes were made and cost real time; both were "the process started" being
 
 ## Conventions
 
-- Comments, test method names, and commit messages are in Polish. **Identifiers are English** — types, methods, parameters, and local variables alike, so the two ports read alike line for line. User-facing UI strings are English too, matching the original application; keep them out of `Wording.Core`/`WordingKit`, which raise typed errors and let the UI choose the wording.
+- **Everything in the repository is English** — identifiers, comments, doc comments, test method names, UI strings, and commit messages. This is a public project; Polish appears only as *data* (the English→Polish starter pack) and in the handful of test assertions that use those words to prove non-ASCII survives a JSON round trip.
+- Keep user-facing wording out of `Wording.Core`/`WordingKit`: they raise typed errors and the UI decides how to phrase them.
+- The two ports are meant to read alike line for line, so keep names and structure symmetric across them.
 - `TreatWarningsAsErrors` is on in `Wording.Core`. Both stacks currently build with zero warnings — keep it that way.
 - `InternalsVisibleTo` exposes `WordSelector.Weight` and its constants to the .NET test project; keep implementation details internal rather than widening the public API for tests.

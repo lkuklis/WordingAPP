@@ -5,7 +5,7 @@ namespace Wording.Core;
 
 public sealed class Word
 {
-    /// <summary>GUID, zeby dwa urzadzenia dodajace slowko offline nie wygenerowaly tego samego identyfikatora.</summary>
+    /// <summary>A GUID, so two devices adding a word offline cannot produce the same identifier.</summary>
     public Guid Id { get; init; } = Guid.NewGuid();
 
     public string Original { get; set; } = string.Empty;
@@ -14,10 +14,10 @@ public sealed class Word
 
     public DateTimeOffset CreatedUtc { get; init; }
 
-    /// <summary>Stan powtorek. Wedruje razem ze slowkiem, zeby nauka byla spojna miedzy urzadzeniami.</summary>
+    /// <summary>Review state. It travels with the word so progress stays consistent across devices.</summary>
     public ReviewState Review { get; set; } = new();
 
-    /// <summary>Slowko jeszcze nigdy nieocenione.</summary>
+    /// <summary>A word that has never been graded.</summary>
     [JsonIgnore]
     public bool IsNew => Review.LastReviewedUtc is null;
 

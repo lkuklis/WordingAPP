@@ -1,19 +1,18 @@
 namespace Wording.Core.Learning;
 
 /// <summary>
-/// Ocena, jaka uzytkownik wystawia sobie po zobaczeniu slowka.
-/// Wartosci odpowiadaja skali jakosci z algorytmu SM-2 (0-5) i sa
-/// przekazywane wprost do <see cref="SpacedRepetitionScheduler"/>.
-/// Trzy stopnie, bo tyle przycisków da sie sensownie zmiescic w powiadomieniu.
+/// How well the user recalled a word. The values are SM-2 quality scores (0-5)
+/// and are passed straight to <see cref="SpacedRepetitionScheduler"/>.
+/// Three levels, because that is as many buttons as fit in a notification.
 /// </summary>
 public enum ReviewGrade
 {
-    /// <summary>Nie pamietam - powtorki startuja od nowa.</summary>
+    /// <summary>Forgotten - the repetition count starts over.</summary>
     Again = 0,
 
-    /// <summary>Z trudem, ale trafione - interwal rosnie, latwosc spada.</summary>
+    /// <summary>Recalled, but with effort - the interval grows, the ease factor drops.</summary>
     Hard = 3,
 
-    /// <summary>Pamietam bez wahania.</summary>
+    /// <summary>Recalled without hesitation.</summary>
     Good = 5,
 }

@@ -5,7 +5,7 @@ public enum WordingError: Error, Equatable {
     case emptyTranslation
 }
 
-/// Fasada dla warstwy UI. Port `Wording.Core.WordManager`.
+/// The façade the UI talks to. A port of `Wording.Core.WordManager`.
 public final class WordManager {
     let store: WordStore
 
@@ -15,7 +15,7 @@ public final class WordManager {
 
     public var words: [Word] { store.words }
 
-    /// - Throws: `WordingError` gdy ktorakolwiek ze stron jest pusta.
+    /// - Throws: `WordingError` when either side is empty.
     @discardableResult
     public func addWord(original: String, translation: String, now: Date = Date()) throws -> Word {
         let trimmedOriginal = original.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -32,13 +32,13 @@ public final class WordManager {
         try store.remove(id: id)
     }
 
-    /// Slowko, ktore powinno teraz trafic do powiadomienia.
+    /// The word that should go into the notification now.
     public func nextWordToShow(now: Date = Date()) -> Word? {
         WordSelector.pickNext(from: store.words, now: now)
     }
 
-    /// Zapisuje ocene powtorki i przelicza termin nastepnego pokazania.
-    /// - Returns: false, gdy slowka o takim id juz nie ma.
+    /// Records a review grade and recomputes when the word is due next.
+    /// - Returns: false when no word with that id exists any more.
     @discardableResult
     public func grade(id: UUID, grade: ReviewGrade, now: Date = Date()) throws -> Bool {
         guard var word = store.word(id: id) else { return false }

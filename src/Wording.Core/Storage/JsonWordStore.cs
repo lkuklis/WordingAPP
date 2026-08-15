@@ -4,10 +4,10 @@ using Wording.Core.Learning;
 namespace Wording.Core.Storage;
 
 /// <summary>
-/// Magazyn slowek w pliku JSON. Trzyma liste w pamieci i zapisuje po kazdej zmianie.
+/// Stores words in a JSON file. Keeps the list in memory and saves after every change.
 /// <para>
-/// Zapis jest atomowy (plik tymczasowy + podmiana), zeby przerwanie procesu w trakcie
-/// zapisu nie zostawilo uciętego pliku z danymi uzytkownika.
+/// Saving is atomic (temporary file, then replace), so interrupting the process
+/// mid-write cannot leave the user with a truncated data file.
 /// </para>
 /// </summary>
 public sealed class JsonWordStore
@@ -28,7 +28,7 @@ public sealed class JsonWordStore
         Reload();
     }
 
-    /// <summary>Wczytuje ponownie z dysku, odrzucajac stan z pamieci.</summary>
+    /// <summary>Re-reads from disk, discarding the in-memory state.</summary>
     public void Reload()
     {
         if (!File.Exists(_path))
@@ -49,10 +49,10 @@ public sealed class JsonWordStore
     }
 
     /// <summary>
-    /// Przenosi slowka ze starego formatu XML, ale wylacznie do pustego magazynu -
-    /// nigdy nie nadpisuje danych, ktore juz sa.
+    /// Imports words from the legacy XML format, but only into an empty store -
+    /// it never overwrites data that is already there.
     /// </summary>
-    /// <returns>Liczba przeniesionych slowek.</returns>
+    /// <returns>How many words were imported.</returns>
     public int ImportLegacyIfEmpty(string? legacyXmlPath)
     {
         if (_words.Count > 0 || legacyXmlPath is null || !File.Exists(legacyXmlPath))
@@ -101,7 +101,7 @@ public sealed class JsonWordStore
         return true;
     }
 
-    /// <summary>Zapisuje zmiany w slowku juz obecnym w magazynie (np. po ocenie powtorki).</summary>
+    /// <summary>Persists changes to a word already in the store (for example after grading).</summary>
     public bool Update(Word word)
     {
         ArgumentNullException.ThrowIfNull(word);
@@ -132,8 +132,8 @@ public sealed class JsonWordStore
             new WordFile { Words = _words },
             WordJsonContext.Default.WordFile);
 
-        // Zapis do pliku obok, potem podmiana - dzieki temu w razie awarii
-        // w trakcie zapisu oryginal zostaje nietkniety.
+        // Write next to the target, then swap it in - a crash mid-write leaves the
+        // original untouched.
         var temporary = _path + ".tmp";
         File.WriteAllText(temporary, json);
         File.Move(temporary, _path, overwrite: true);
