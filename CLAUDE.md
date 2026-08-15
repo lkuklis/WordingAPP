@@ -28,7 +28,9 @@ This is deliberate. Notification APIs are the least abstractable part of the pla
 - `src/Wording.Core/` — `net10.0`, **deliberately not `-windows`**. All .NET logic: `Learning/` (SM-2, weighted selector), `Storage/` (JSON store, legacy XML importer, paths). Knows nothing about configuration or UI, so it builds and tests on macOS.
 - `src/Wording.WordApp/` — `net10.0-windows` WinForms app, its settings, and the list projection. `Program.Main` is the composition root. `EnableWindowsTargeting` lets it compile on non-Windows hosts.
 - `tests/Wording.Core.Tests/` — xUnit, 49 tests, runs on macOS.
-- `macos/` — SwiftPM package. `WordingKit` (logic port + starter pack) and `WordingApp` (SwiftUI). 43 tests.
+- `macos/` — SwiftPM package. `WordingKit` (logic port + starter pack) and `WordingApp` (SwiftUI). 43 tests. `build-app.sh` assembles and signs `Wording.app`; `make-dmg.sh` wraps it in a disk image.
+- `windows/Wording.iss` — Inno Setup script for the Windows installer. Only ever built in CI; it cannot be compiled on macOS.
+- `RELEASING.md` — how a release is cut and which Apple secrets it needs. `LICENSE` — GPL-3.0.
 
 ## Architecture
 
@@ -56,7 +58,7 @@ compile either way, which is exactly why this passed locally and failed in CI. B
 that touch the framework use `@preconcurrency import UserNotifications`. Do not "fix" that
 by requiring a newer Xcode; anyone building from source would hit the same wall.
 
-**The app must run from `Wording.app`, not `swift run`.** `UNUserNotificationCenter.current()` traps in a bare executable because there is no bundle identifier. `macos/build-app.sh` assembles the bundle, writes `Info.plist` (`com.lkuklis.wording`, `LSUIElement` so there is no Dock icon), and ad-hoc signs it — the signature is what keeps notification permission stable across launches.
+**The app must run from `Wording.app`, not `swift run`.** `UNUserNotificationCenter.current()` traps in a bare executable because there is no bundle identifier. `macos/build-app.sh` assembles the bundle and writes `Info.plist` (`com.lkuklis.wording`, `LSUIElement` so there is no Dock icon). It takes `VERSION`, `UNIVERSAL=1` and `SIGN_IDENTITY` from the environment: with no identity it ad-hoc signs, which is fine on the machine that built it but is exactly what Gatekeeper rejects once a file has been downloaded. CI passes a real Developer ID and adds the hardened runtime.
 
 **Three serialization traps the interop tests exist to catch**, all of which would silently corrupt a data file carried over from the other platform:
 - Swift encodes `UUID` uppercase, System.Text.Json writes lowercase. Without the manual `encode`, the first macOS save rewrites every id in the file. (Only the encoder is hand-written; the synthesized decoder is fine because `UUID(uuidString:)` is case-insensitive.)
@@ -108,23 +110,38 @@ dotnet publish src/Wording.WordApp/Wording.WordApp.csproj -c Release -r win-x64 
 
 ## Verification lessons worth keeping
 
-Two mistakes were made and cost real time; both were "the process started" being mistaken for "the feature works".
+Every bug that survived into this project's history was a case of a green signal being
+mistaken for a working feature. Compiling is not running; exiting 0 is not succeeding;
+a passing test suite covers only the host it ran on.
 
 - `osascript display notification` **exits 0 even when nothing is displayed.** It posts as Script Editor and is dropped silently without that app's permission. Exit codes prove nothing about notification delivery.
 - A notification being **delivered to Notification Center is not the same as a banner being displayed.** `terminal-notifier -list` proves the former only. Alert style and Focus decide the latter, and both are TCC-protected — unreadable from a shell, so the user has to check System Settings.
+- **The app bundle was missing its resource bundle for weeks** and nobody noticed, because the failure only happens with no `words.json` on disk — every new user, no developer. Test the first-run path deliberately: move the data file aside and launch.
+- **The Swift code silently required the newest Xcode.** It compiled locally against SDK 26 and failed on CI's Xcode 16.4, where `UserNotifications` lacks concurrency annotations. A local build proves one toolchain, not the range.
+- **Git Bash rewrote `/DAppVersion=…` into a Windows path**, so the installer compiler saw two script names. Anything Windows-shaped is unverifiable from macOS; expect the first CI run on it to fail.
 
 ## Release pipeline
 
-`.github/workflows/ci.yml` builds and tests both stacks on every push, on a macOS runner
-— it is the only runner that covers Swift *and* (thanks to `EnableWindowsTargeting`) the
-WinForms project.
+`.github/workflows/ci.yml` builds and tests both stacks on pushes to `master` and on
+pull requests, using a macOS runner — the only one that covers Swift *and* (thanks to
+`EnableWindowsTargeting`) the WinForms project.
 
 `.github/workflows/release.yml` fires on a `v*` tag and produces the Windows installer,
 a portable zip, and a notarised universal `.dmg`. Versions are CalVer (`YYYY.M.PATCH`)
 and the **git tag is the only source of the version number** — `build-app.sh` writes it
 into `Info.plist` and the workflow passes it to `dotnet publish` as `-p:Version=`. Never
-hardcode a version in a file. See [RELEASING.md](RELEASING.md) for the required Apple
-secrets.
+hardcode a version in a file.
+
+All six signing secrets are already configured and the Developer ID certificate is valid
+to 2031-08-16, so a routine release is just a tag. `RELEASING.md` covers the setup for
+when that changes. To rehearse without publishing, run the workflow manually — a
+`workflow_dispatch` run builds artefacts but creates no release, because publishing is
+gated on `github.event_name == 'push'`.
+
+Verified on 2026.8.0: the published `.dmg`, downloaded from the release page with the
+quarantine attribute set, is accepted by Gatekeeper as `source=Notarized Developer ID`.
+Creating the Developer ID certificate is the one step that cannot be automated — the App
+Store Connect API returns 403, Account Holder only.
 
 **`macos/build-app.sh` must copy the SwiftPM resource bundle into `Contents/Resources`.**
 It is not optional packaging polish: `Bundle.module` calls `fatalError` when the bundle
@@ -137,7 +154,7 @@ bundle is present for exactly this reason.
 - **The Windows app has never been run**, only compiled. Its tray menu, grading, and grid are unverified.
 - **Windows notifications are still `ShowBalloonTip`**, which Windows 10+ reroutes to the toast system while ignoring the timeout, and which has no action buttons. Windows App SDK toasts (needing COM activator registration for unpackaged apps) are the equivalent of what the Swift app already does.
 - **The Swift app has no quiet hours**, only a pause and an interval picker (5 s – 1 h, default 30 s). The .NET app has neither and reads its interval from `appsettings.json`.
-- **`Wording.app` is ad-hoc signed**, so it is fine locally but not distributable without a Developer ID.
+- **The Windows installer is unsigned**, so SmartScreen warns until a code-signing certificate is bought. The macOS side is signed and notarised.
 
 ## License
 
