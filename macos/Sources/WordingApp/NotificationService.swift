@@ -1,5 +1,10 @@
 import Foundation
-import UserNotifications
+// @preconcurrency because older SDKs (Xcode 16.4 on the CI runner, for instance) ship
+// UserNotifications without concurrency annotations: UNNotificationSettings is not
+// Sendable there, so returning it across an isolation boundary is a hard error under
+// Swift 6. Newer SDKs annotate it and compile either way - this keeps the package
+// building on both.
+@preconcurrency import UserNotifications
 import WordingKit
 
 /// Native notifications through UNUserNotificationCenter.

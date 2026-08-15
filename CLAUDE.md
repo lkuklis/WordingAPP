@@ -48,6 +48,14 @@ This is deliberate. Notification APIs are the least abstractable part of the pla
 
 ### Swift-specific
 
+**The package must build on the CI runner's Xcode, not just the newest one.** The
+`macos-15` runner ships Xcode 16.4 / SDK 15.5, where `UserNotifications` has no
+concurrency annotations — `UNNotificationSettings` is not `Sendable`, so returning it
+across an isolation boundary is a hard error under Swift 6. Newer SDKs annotate it and
+compile either way, which is exactly why this passed locally and failed in CI. Both files
+that touch the framework use `@preconcurrency import UserNotifications`. Do not "fix" that
+by requiring a newer Xcode; anyone building from source would hit the same wall.
+
 **The app must run from `Wording.app`, not `swift run`.** `UNUserNotificationCenter.current()` traps in a bare executable because there is no bundle identifier. `macos/build-app.sh` assembles the bundle, writes `Info.plist` (`com.lkuklis.wording`, `LSUIElement` so there is no Dock icon), and ad-hoc signs it — the signature is what keeps notification permission stable across launches.
 
 **Three serialization traps the interop tests exist to catch**, all of which would silently corrupt a data file carried over from the other platform:
