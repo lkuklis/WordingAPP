@@ -71,16 +71,16 @@ jobs:
         run: choco install innosetup --no-progress -y
 
       - name: Build the installer
-        shell: bash
+        # PowerShell rather than bash on purpose: Git Bash rewrites anything starting
+        # with a slash into a Windows path, so /DAppVersion=... reached ISCC as
+        # C:/Program Files/Git/DAppVersion=... and it complained about two script names.
+        shell: pwsh
         run: |
-          # Chocolatey usually puts a shim on PATH; fall back to the default location.
-          if command -v iscc >/dev/null; then
-            ISCC=iscc
-          else
-            ISCC="/c/Program Files (x86)/Inno Setup 6/ISCC.exe"
-          fi
+          $iscc = 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
+          if (-not (Test-Path $iscc)) { $iscc = 'iscc' }
 
-          "$ISCC" "/DAppVersion=$VERSION" windows/Wording.iss
+          & $iscc "/DAppVersion=$env:VERSION" windows\Wording.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - uses: actions/upload-artifact@v4
         with:
