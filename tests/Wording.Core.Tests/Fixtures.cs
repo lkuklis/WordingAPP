@@ -28,6 +28,10 @@ sealed class TempDirectory : IDisposable
 
     public string JsonFile => System.IO.Path.Combine(Path, WordingPaths.DataFileName);
 
+    public string SetsDirectory => System.IO.Path.Combine(Path, WordingPaths.SetsFolderName);
+
+    public string SetFile(string slug) => WordingPaths.SetFile(slug, SetsDirectory);
+
     public string XmlFile => System.IO.Path.Combine(Path, WordingPaths.LegacyDataFileName);
 
     /// <summary>Writes a file in the legacy XML format, used by the import tests.</summary>

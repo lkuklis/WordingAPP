@@ -75,8 +75,8 @@ this project's history came from treating a compile as a run.
 - `Wording.slnx` — .NET solution in the `.slnx` XML format (the .NET 10 SDK default). `dotnet new sln --format sln` regenerates a classic `.sln` if an older Visual Studio can't open it.
 - `src/Wording.Core/` — `net10.0`, **deliberately not `-windows`**. All .NET logic: `Learning/` (SM-2, weighted selector), `Storage/` (JSON store, legacy XML importer, paths). Knows nothing about configuration or UI, so it builds and tests on macOS.
 - `src/Wording.WordApp/` — `net10.0-windows` WinForms app, its settings, and the list projection. `Program.Main` is the composition root. `EnableWindowsTargeting` lets it compile on non-Windows hosts.
-- `tests/Wording.Core.Tests/` — xUnit, 47 tests, runs on macOS.
-- `macos/` — SwiftPM package. `WordingKit` (logic port) and `WordingApp` (SwiftUI). 35 tests. No target declares resources, so SwiftPM produces no resource bundle. `build-app.sh` assembles and signs `Wording.app`; `make-dmg.sh` wraps it in a disk image.
+- `tests/Wording.Core.Tests/` — xUnit, 125 tests, runs on macOS.
+- `macos/` — SwiftPM package. `WordingKit` (logic port) and `WordingApp` (SwiftUI). 83 tests. No target declares resources, so SwiftPM produces no resource bundle. `build-app.sh` assembles and signs `Wording.app`; `make-dmg.sh` wraps it in a disk image.
 - `windows/Wording.iss` — Inno Setup script for the Windows installer. Only ever built in CI; it cannot be compiled on macOS.
 - `RELEASING.md` — how a release is cut and which Apple secrets it needs. `LICENSE` — GPL-3.0.
 
@@ -91,6 +91,27 @@ this project's history came from treating a compile as a run.
 **The scheduler is a pure function** over `(ReviewState, ReviewGrade, Date)`, with an immutable state type, in both languages. .NET injects `TimeProvider` (tests use `FakeTimeProvider`); Swift passes `now` explicitly. No test sleeps.
 
 **Saves are atomic** in both — write to `<path>.tmp`, then replace.
+
+### Word sets and packs
+
+A **pack** is content published at a URL; a **set** is a pack after import, living in its own file. They are deliberately different types. `words.json` is personal state — identifiers and review progress — so if a pack had the same shape, a published one would carry its author's review history and importing it would either overwrite the reader's progress or invent one.
+
+```
+<data dir>/words.json          the user's own words, no set header
+<data dir>/sets/<slug>.json    one imported set per file, same shape plus a "set" header
+```
+
+**An import never writes to `words.json` and never to another set.** That is the whole point: a download cannot disturb what the user is learning from at the time. Re-importing merges — words already present keep their review state, because resetting someone's progress is the one thing an import must never do. Words dropped upstream are *not* deleted locally.
+
+**The installed sets are the directory listing, not a registry file.** A registry has to be kept in step with the disk and stops matching it the moment a file is moved by hand. For the same reason word counts are read from each file rather than stored: a stored count starts lying as soon as a word is deleted.
+
+**`PackSlug` is a security boundary, not tidiness.** The pack's `id` decides which file gets written, and it arrives inside a file fetched from an arbitrary URL — an id of `../words.json` would overwrite exactly the data this design protects. It is an allow-list (`[a-z0-9-]`, bounded length, no leading or trailing hyphen, Windows reserved names refused *on both platforms*), and an id that fails is **refused, never cleaned up**: silently rewriting one would let two different packs collapse onto the same file.
+
+`WordPackReader` refuses structural problems but *truncates* the two display-only fields, name and description. The user did not write the file and cannot fix it, so failing a whole pack over a long title would leave them with no way forward. Control characters are folded to spaces — they would otherwise reach a notification body.
+
+`PackDownloader` accepts https only (re-checked after redirects), caps the payload while reading rather than after, and takes its transport by injection. Every rule there fires only on input nobody sends by accident, which is exactly the kind that goes untested when reaching it needs a real server — so the tests stub the transport and none of them touch the network.
+
+**Adding to the persisted graph still means updating `WordJsonContext`.** `WordPack` is in it. Verify with `dotnet run` on a file-based app, which disables reflection-based JSON: `scratchpad/packcheck.cs` in the session directory is the shape of that check.
 
 ### .NET-specific
 
@@ -205,6 +226,7 @@ that guarded it. CI now checks the executable and `CFBundleIdentifier` instead.
 
 ## Known gaps
 
+- **Word packs have no UI yet.** The format, validation, download and import are done and tested in both ports; nothing calls them. Still to build: choosing the active set (one at a time — switching must go through the composition root and clear `lastShown`, or a grade would land on a word from the set that is no longer open), an import screen showing the pack name before it is written, and `learning_data/` in the repository with a CI validator using this same parser.
 - **The Windows app has never been run**, only compiled. Its tray menu, grading, and grid are unverified.
 - **Windows notifications are still `ShowBalloonTip`**, which Windows 10+ reroutes to the toast system while ignoring the timeout, and which has no action buttons. Windows App SDK toasts (needing COM activator registration for unpackaged apps) are the equivalent of what the Swift app already does.
 - **The Swift app has no quiet hours**, only a pause and an interval picker (5 s – 1 h, default 30 s). The .NET app has neither and reads its interval from `appsettings.json`.

@@ -17,6 +17,16 @@ public sealed class JsonWordStore
     readonly string _path;
     readonly TimeProvider _clock;
     List<Word> _words = [];
+    WordSet? _set;
+
+    /// <summary>
+    /// The set header when this file is an imported set, null for the user's own words.
+    /// Held so that saving a grade cannot quietly drop it.
+    /// </summary>
+    public WordSet? Set => _set;
+
+    /// <summary>Mirrors WordStore.fileURL in the Swift port.</summary>
+    public string FilePath => _path;
 
     public JsonWordStore(string path, TimeProvider? clock = null)
     {
@@ -34,6 +44,7 @@ public sealed class JsonWordStore
         if (!File.Exists(_path))
         {
             _words = [];
+            _set = null;
             return;
         }
 
@@ -42,10 +53,35 @@ public sealed class JsonWordStore
         if (string.IsNullOrWhiteSpace(json))
         {
             _words = [];
+            _set = null;
             return;
         }
 
-        _words = JsonSerializer.Deserialize(json, WordJsonContext.Default.WordFile)?.Words ?? [];
+        var file = JsonSerializer.Deserialize(json, WordJsonContext.Default.WordFile);
+
+        _words = file?.Words ?? [];
+        _set = file?.Set;
+    }
+
+    /// <summary>Marks this file as an imported set, or refreshes the header of one.</summary>
+    public void Describe(WordSet set)
+    {
+        ArgumentNullException.ThrowIfNull(set);
+
+        _set = set;
+        Save();
+    }
+
+    /// <summary>
+    /// Appends several words in one save. Importing a pack one <see cref="Add"/> at a
+    /// time would rewrite the whole file per word.
+    /// </summary>
+    internal void AddRange(IEnumerable<Word> words)
+    {
+        ArgumentNullException.ThrowIfNull(words);
+
+        _words.AddRange(words);
+        Save();
     }
 
     /// <summary>
@@ -129,7 +165,7 @@ public sealed class JsonWordStore
         }
 
         var json = JsonSerializer.Serialize(
-            new WordFile { Words = _words },
+            new WordFile { Set = _set, Words = _words },
             WordJsonContext.Default.WordFile);
 
         // Write next to the target, then swap it in - a crash mid-write leaves the

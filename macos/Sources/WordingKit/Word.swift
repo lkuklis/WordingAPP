@@ -49,6 +49,10 @@ public struct Word: Codable, Equatable, Identifiable, Sendable {
 /// Shape of words.json - must match `Wording.Core.Storage.WordFile`.
 struct WordFile: Codable {
     var version: Int
+
+    /// Present only in an imported set; nil in the user's own words.json.
+    var set: WordSet?
+
     var words: [Word]
 
     static let currentVersion = 1

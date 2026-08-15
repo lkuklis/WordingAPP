@@ -19,4 +19,18 @@ public enum WordingPaths {
     public static func dataFile() -> URL {
         dataDirectory().appending(path: dataFileName, directoryHint: .notDirectory)
     }
+
+    /// Imported sets live beside words.json, one file each, never inside it.
+    public static let setsFolderName = "sets"
+
+    public static func setsDirectory() -> URL {
+        dataDirectory().appending(path: setsFolderName, directoryHint: .isDirectory)
+    }
+
+    /// The file an imported set is written to. The identifier has already been through
+    /// `PackSlug`, which is what stops a downloaded file from choosing its own path.
+    public static func setFile(_ slug: String, in setsDirectory: URL? = nil) -> URL {
+        (setsDirectory ?? Self.setsDirectory())
+            .appending(path: "\(slug).json", directoryHint: .notDirectory)
+    }
 }

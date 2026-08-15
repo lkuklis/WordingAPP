@@ -40,4 +40,16 @@ public static class WordingPaths
     }
 
     public static string DataFile() => Path.Combine(DataDirectory(), DataFileName);
+
+    /// <summary>Imported sets live beside words.json, one file each, never inside it.</summary>
+    public const string SetsFolderName = "sets";
+
+    public static string SetsDirectory() => Path.Combine(DataDirectory(), SetsFolderName);
+
+    /// <summary>
+    /// The file an imported set is written to. The identifier has already been through
+    /// <c>PackSlug</c>, which is what stops a downloaded file from choosing its own path.
+    /// </summary>
+    public static string SetFile(string slug, string? setsDirectory = null) =>
+        Path.Combine(setsDirectory ?? SetsDirectory(), slug + ".json");
 }

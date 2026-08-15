@@ -9,6 +9,10 @@ public final class WordStore {
     public let fileURL: URL
     public private(set) var words: [Word] = []
 
+    /// The set header when this file is an imported set, nil for the user's own words.
+    /// Held so that saving a grade cannot quietly drop it.
+    public private(set) var set: WordSet?
+
     public init(fileURL: URL = WordingPaths.dataFile()) throws {
         self.fileURL = fileURL
         try reload()
@@ -18,6 +22,7 @@ public final class WordStore {
     public func reload() throws {
         guard FileManager.default.fileExists(atPath: fileURL.path(percentEncoded: false)) else {
             words = []
+            set = nil
             return
         }
 
@@ -25,10 +30,27 @@ public final class WordStore {
 
         guard !data.isEmpty else {
             words = []
+            set = nil
             return
         }
 
-        words = try WordingJSON.decoder.decode(WordFile.self, from: data).words
+        let file = try WordingJSON.decoder.decode(WordFile.self, from: data)
+
+        words = file.words
+        set = file.set
+    }
+
+    /// Marks this file as an imported set, or refreshes the header of one.
+    public func describe(_ set: WordSet) throws {
+        self.set = set
+        try save()
+    }
+
+    /// Appends several words in one save. Importing a pack one `add` at a time would
+    /// rewrite the whole file per word.
+    func addMany(_ newWords: [Word]) throws {
+        words.append(contentsOf: newWords)
+        try save()
     }
 
     public func word(id: UUID) -> Word? {
@@ -78,7 +100,7 @@ public final class WordStore {
         let directory = fileURL.deletingLastPathComponent()
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
 
-        let payload = WordFile(version: WordFile.currentVersion, words: words)
+        let payload = WordFile(version: WordFile.currentVersion, set: set, words: words)
         let data = try WordingJSON.encoder.encode(payload)
 
         // Write alongside, then swap - a crash mid-write leaves the original intact.

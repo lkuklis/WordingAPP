@@ -8,5 +8,8 @@ internal sealed class WordFile
 {
     public int Version { get; set; } = JsonWordStore.CurrentVersion;
 
+    /// <summary>Present only in an imported set; null in the user's own words.json.</summary>
+    public WordSet? Set { get; set; }
+
     public List<Word> Words { get; set; } = [];
 }

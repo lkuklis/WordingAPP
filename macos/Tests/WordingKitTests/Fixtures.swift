@@ -33,6 +33,10 @@ final class TempDirectory {
 
     var jsonFile: URL { path.appending(path: WordingPaths.dataFileName) }
 
+    var setsDirectory: URL { path.appending(path: WordingPaths.setsFolderName) }
+
+    func setFile(_ slug: String) -> URL { WordingPaths.setFile(slug, in: setsDirectory) }
+
     deinit {
         try? FileManager.default.removeItem(at: path)
     }

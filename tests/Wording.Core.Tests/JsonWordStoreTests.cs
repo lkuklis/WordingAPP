@@ -185,6 +185,37 @@ public class JsonWordStoreTests
     }
 
     [Fact]
+    public void Set_IsNullForTheUsersOwnWords()
+    {
+        using var dir = new TempDirectory();
+        var store = new JsonWordStore(dir.JsonFile, Fixtures.Clock());
+        store.Add("mine", "moje");
+
+        Assert.Null(store.Set);
+        Assert.DoesNotContain("\"set\"", File.ReadAllText(dir.JsonFile), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Set_SurvivesEveryLaterSave()
+    {
+        // Grading a word rewrites the whole file; dropping the header there would lose
+        // the set's name and the address it can be refreshed from.
+        using var dir = new TempDirectory();
+        var store = new JsonWordStore(dir.JsonFile, Fixtures.Clock());
+        store.Describe(new WordSet { Id = "travel-basics", Name = "Travel basics", SourceUrl = "https://example.com/p.json" });
+
+        var word = store.Add("airport", "aeropuerto");
+        word.Review = Wording.Core.Learning.ReviewState.New(Fixtures.Now);
+        store.Update(word);
+
+        var reloaded = new JsonWordStore(dir.JsonFile).Set;
+
+        Assert.NotNull(reloaded);
+        Assert.Equal("travel-basics", reloaded.Id);
+        Assert.Equal("https://example.com/p.json", reloaded.SourceUrl);
+    }
+
+    [Fact]
     public void Save_CreatesTheMissingDirectory()
     {
         using var dir = new TempDirectory();
