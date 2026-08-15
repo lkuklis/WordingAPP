@@ -52,3 +52,18 @@ swift test                       # 43 tests
 
 The Windows project compiles on macOS and Linux too, it simply cannot run there. See
 [RELEASING.md](RELEASING.md) for how releases are built and signed.
+
+## License
+
+Copyright © 2013–2026 Lukasz Kuklis
+
+Wording is free software: you can redistribute it and modify it under the terms of the
+**GNU General Public License, version 3** or (at your option) any later version.
+
+It is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY — without
+even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See
+the [LICENSE](LICENSE) file for the full text.
+
+In practice this means anyone may use, study and improve Wording freely, but anyone who
+distributes a modified version has to publish its source under the same licence. A
+closed-source product cannot be built on top of it.

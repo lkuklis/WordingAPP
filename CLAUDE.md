@@ -8,7 +8,7 @@ Wording is a tray/menu-bar application for learning vocabulary. Originally writt
 
 A timer fires periodically and shows a word in a system notification — title is the original, body is the translation — so learning happens ambiently while the user works on something else. The user grades the word (*I know it* / *Hard* / *Don't know*), which feeds an SM-2 spaced repetition schedule.
 
-## Two apps, one data file
+## Two apps, one data format
 
 | | `src/` (.NET) | `macos/` (Swift) |
 |---|---|---|
@@ -18,9 +18,9 @@ A timer fires periodically and shows a word in a system notification — title i
 | Grading | tray context menu | **action buttons in the notification** |
 | Status | compiles clean, **never run** | verified working end to end |
 
-This is deliberate. Notification APIs are the least abstractable part of the platform and they *are* the product here, so each platform uses its own native one and the two apps share `words.json` rather than sharing code. An Avalonia shell existed briefly as scaffolding to run something on macOS before the native port; it was removed once the Swift app worked.
+This is deliberate. Notification APIs are the least abstractable part of the platform and they *are* the product here, so each platform uses its own native one and the two apps share only the data format, not code. An Avalonia shell existed briefly as scaffolding to run something on macOS before the native port; it was removed once the Swift app worked.
 
-**`words.json` is the contract between them.** Any change to the serialized shape must be made on both sides, and `macos/Tests/WordingKitTests/InteropTests.swift` is what guards it.
+**The two apps write the same `words.json` shape, but they are not expected to share a live file.** A Windows user runs the Windows app, a macOS user runs the macOS one. Keeping the formats identical is insurance for the case that does occur — someone moving machines, or keeping their data directory in a synced folder — and it is cheap now that `macos/Tests/WordingKitTests/InteropTests.swift` pins it. Treat it as a compatibility guarantee worth keeping, not as a requirement that should drive design decisions.
 
 ## Layout
 
@@ -28,7 +28,7 @@ This is deliberate. Notification APIs are the least abstractable part of the pla
 - `src/Wording.Core/` — `net10.0`, **deliberately not `-windows`**. All .NET logic: `Learning/` (SM-2, weighted selector), `Storage/` (JSON store, legacy XML importer, paths). Knows nothing about configuration or UI, so it builds and tests on macOS.
 - `src/Wording.WordApp/` — `net10.0-windows` WinForms app, its settings, and the list projection. `Program.Main` is the composition root. `EnableWindowsTargeting` lets it compile on non-Windows hosts.
 - `tests/Wording.Core.Tests/` — xUnit, 49 tests, runs on macOS.
-- `macos/` — SwiftPM package. `WordingKit` (logic port + starter pack) and `WordingApp` (SwiftUI). 41 tests.
+- `macos/` — SwiftPM package. `WordingKit` (logic port + starter pack) and `WordingApp` (SwiftUI). 43 tests.
 
 ## Architecture
 
@@ -50,10 +50,10 @@ This is deliberate. Notification APIs are the least abstractable part of the pla
 
 **The app must run from `Wording.app`, not `swift run`.** `UNUserNotificationCenter.current()` traps in a bare executable because there is no bundle identifier. `macos/build-app.sh` assembles the bundle, writes `Info.plist` (`com.lkuklis.wording`, `LSUIElement` so there is no Dock icon), and ad-hoc signs it — the signature is what keeps notification permission stable across launches.
 
-**Three serialization traps the interop tests exist to catch**, all of which silently corrupt the shared file:
+**Three serialization traps the interop tests exist to catch**, all of which would silently corrupt a data file carried over from the other platform:
 - Swift encodes `UUID` uppercase, System.Text.Json writes lowercase. Without the manual `encode`, the first macOS save rewrites every id in the file. (Only the encoder is hand-written; the synthesized decoder is fine because `UUID(uuidString:)` is case-insensitive.)
 - .NET writes six fractional-second digits (`22:18:18.405614+00:00`); Swift's `.iso8601` strategy rejects fractional seconds outright, so `WordingJSON` uses a custom strategy with a non-fractional fallback.
-- **`Date.ISO8601FormatStyle` cannot replace `ISO8601DateFormatter` here**, however tempting its `Sendable` conformance is. It *truncates* the fraction to milliseconds instead of rounding, and combined with binary floating point the round trip does not converge: `.405614` → `.405` → `.404` → `.404`. Every save would walk timestamps backwards. `ISO8601DateFormatter` rounds correctly. `InteropTests.pelnaRundaTamIzPowrotemNieGubiDanych` catches this.
+- **`Date.ISO8601FormatStyle` cannot replace `ISO8601DateFormatter` here**, however tempting its `Sendable` conformance is. It *truncates* the fraction to milliseconds instead of rounding, and combined with binary floating point the round trip does not converge: `.405614` → `.405` → `.404` → `.404`. Every save would walk timestamps backwards. `ISO8601DateFormatter` rounds correctly. `InteropTests.aFullRoundTripLosesNothing` catches this.
 
 `WordingJSON` therefore builds a fresh `ISO8601DateFormatter` inside each coding closure rather than sharing one: the strategies are `@Sendable` and the formatter is not. That costs roughly 14 ms per whole-file save, which is imperceptible at this size and avoids a `nonisolated(unsafe)` escape. The package builds in Swift 6 language mode with no concurrency escapes at all.
 
@@ -61,10 +61,10 @@ This is deliberate. Notification APIs are the least abstractable part of the pla
 
 `words.json` in the per-user data directory: `%APPDATA%\Wording` on Windows, `~/Library/Application Support/Wording` on macOS. (`SpecialFolder.ApplicationData` resolves to `~/.config` on macOS, which is wrong there, hence the explicit branch in the .NET `WordingPaths`.) Override the .NET path via `wording:dataFile` in `appsettings.json`.
 
-Ids are GUIDs. The pre-2026 format recomputed `Id = max + 1` on every add, so deleting the highest-numbered word freed its id for reuse — unusable as a sync key. Review state travels inside each word record so both apps stay in sync from one file.
+Ids are GUIDs. The pre-2026 format recomputed `Id = max + 1` on every add, so deleting the highest-numbered word freed its id for reuse — a real bug regardless of how many machines are involved. Review state travels inside each word record, so copying the file to another machine carries the learning progress with it.
 
 Seeding the same 38-word English→Polish starter pack happens differently per platform, and the word list is consequently duplicated:
-- .NET: `JsonWordStore.OpenOrMigrate` imports `WordsData.xml` found next to the executable or in the working directory, which doubles as the migration path for pre-2026 installs.
+- .NET: `JsonWordStore.ImportLegacyIfEmpty`, called from `Program.Main`, imports `WordsData.xml` found next to the executable or in the working directory. It doubles as the migration path for pre-2026 installs.
 - Swift: `StarterPack` reads the bundled `starter-pack.json` and `seedIfEmpty` applies it **only to an empty store**, so it never touches a file written by the .NET app. There is no XML parser in the Swift port by design.
 
 If the starter word list changes, change both `src/Wording.Core/WordsData.xml` and `macos/Sources/WordingKit/Resources/starter-pack.json`.
@@ -130,6 +130,20 @@ bundle is present for exactly this reason.
 - **Windows notifications are still `ShowBalloonTip`**, which Windows 10+ reroutes to the toast system while ignoring the timeout, and which has no action buttons. Windows App SDK toasts (needing COM activator registration for unpackaged apps) are the equivalent of what the Swift app already does.
 - **The Swift app has no quiet hours**, only a pause and an interval picker (5 s – 1 h, default 30 s). The .NET app has neither and reads its interval from `appsettings.json`.
 - **`Wording.app` is ad-hoc signed**, so it is fine locally but not distributable without a Developer ID.
+
+## License
+
+GPL-3.0. The full text is in `LICENSE`; the copyright notice and a plain-language summary
+are in `README.md`. This is a deliberate choice over MIT/Apache: it lets anyone use and
+improve Wording, but a redistributed derivative has to ship its source under the same
+terms, so nobody can build a closed commercial product on it.
+
+Two consequences worth remembering:
+- **The Mac App Store is off the table.** Its terms conflict with GPL-3.0 (this is what
+  got VLC pulled). Direct distribution with a Developer ID is the path, which suits this
+  app anyway — sandboxing would move `words.json` into a container.
+- New source files do not carry per-file GPL headers. That is a conscious trade for
+  readability; `LICENSE` plus the README notice carry the licence.
 
 ## Conventions
 
