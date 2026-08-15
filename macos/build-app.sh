@@ -43,12 +43,10 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
 cp "$BIN" "$APP/Contents/MacOS/Wording"
 
-# SwiftPM puts target resources in a bundle next to the executable; it has to travel
-# into the app or StarterPack.load() finds nothing on a first run.
-for RESOURCE_BUNDLE in "$(dirname "$BIN")"/*.bundle; do
-    [ -e "$RESOURCE_BUNDLE" ] || continue
-    cp -R "$RESOURCE_BUNDLE" "$APP/Contents/Resources/"
-done
+# No target declares resources any more, so SwiftPM produces no resource bundle and
+# there is nothing else to copy. If one is ever added back, it has to be copied in
+# here as well: Bundle.module calls fatalError when its bundle is missing, and that
+# only shows up on a machine with no words.json - every new user, no developer.
 
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>

@@ -62,6 +62,17 @@ public partial class WordingMain : Form
         };
 
         RefreshGrid();
+
+        // With no words the timer has nothing to show, so this is the only notification
+        // a new user would ever get - it is what tells them the app is alive.
+        if (_manager.GetWords().Count == 0)
+        {
+            _notifyIcon.ShowBalloonTip(
+                _showTimeMs,
+                "Wording is ready",
+                "Add your first word from the tray menu and it will start showing up here.",
+                ToolTipIcon.Info);
+        }
     }
 
     ContextMenuStrip BuildTrayMenu()
@@ -106,11 +117,15 @@ public partial class WordingMain : Form
     {
         var now = DateTimeOffset.UtcNow;
 
-        dataGridWords.AutoGenerateColumns = true;
-        dataGridWords.DataSource = _manager.GetWords()
+        var rows = _manager.GetWords()
             .OrderBy(word => word.Review.DueUtc)
             .Select(word => new WordRow(word, now))
             .ToList();
+
+        dataGridWords.AutoGenerateColumns = true;
+        dataGridWords.DataSource = rows;
+
+        lblEmpty.Visible = rows.Count == 0;
 
         // Cell edits were never persisted, so the grid is read-only. Deleting rows works.
         dataGridWords.ReadOnly = true;

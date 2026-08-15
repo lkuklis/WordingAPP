@@ -34,8 +34,13 @@ Edit it with the app or with any text editor. Review progress is stored alongsid
 word, so pointing both apps at the same synced file keeps your learning in step across
 machines.
 
-A sample English → Polish pack ships with the app and seeds the file on first run, along
-with any `WordsData.xml` left over from older versions.
+Wording starts empty — no sample words are added, so every word in the file is one you
+chose. The file itself is created the first time you add one. On a first run the app
+sends a single welcome notification so you can tell straight away that notifications are
+getting through.
+
+Upgrading from a pre-2026 version: put your old `WordsData.xml` next to
+`Wording.WordApp.exe` and it is imported once, on the next start, into `words.json`.
 
 ## Building from source
 
@@ -43,10 +48,10 @@ Requires the .NET 10 SDK; the macOS app additionally needs Xcode command line to
 
 ```bash
 dotnet build Wording.slnx        # Windows app and shared logic
-dotnet test                      # 49 tests
+dotnet test                      # 47 tests
 
 cd macos
-swift test                       # 43 tests
+swift test                       # 35 tests
 ./build-app.sh && open build/Wording.app
 ```
 

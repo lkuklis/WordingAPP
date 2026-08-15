@@ -10,10 +10,7 @@ let package = Package(
     targets: [
         // Logic: a port of Wording.Core. It reads and writes exactly the same
         // words.json as the .NET app - the format is the contract between them.
-        .target(
-            name: "WordingKit",
-            resources: [.process("Resources")]
-        ),
+        .target(name: "WordingKit"),
 
         .executableTarget(
             name: "WordingApp",

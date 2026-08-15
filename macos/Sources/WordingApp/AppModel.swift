@@ -50,11 +50,9 @@ final class AppModel {
 
     func start() async {
         do {
+            // The file is created by the first save; a missing one is simply an empty
+            // store. Nothing is seeded - the words are the user's own.
             let store = try WordStore()
-
-            // First run on a clean machine. When the file already exists (written by
-            // the .NET app, say) nothing happens.
-            try store.seedIfEmpty()
 
             manager = WordManager(store: store)
             refresh()
@@ -65,6 +63,10 @@ final class AppModel {
 
         await notifications.prepare()
         await updateAuthorizationMessage()
+
+        // With no words the timer has nothing to show, so this is the only notification
+        // a new user would ever get - it is what tells them the app is alive.
+        if words.isEmpty { notifications.showWelcome() }
 
         restartTimer()
     }

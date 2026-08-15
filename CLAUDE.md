@@ -75,8 +75,8 @@ this project's history came from treating a compile as a run.
 - `Wording.slnx` — .NET solution in the `.slnx` XML format (the .NET 10 SDK default). `dotnet new sln --format sln` regenerates a classic `.sln` if an older Visual Studio can't open it.
 - `src/Wording.Core/` — `net10.0`, **deliberately not `-windows`**. All .NET logic: `Learning/` (SM-2, weighted selector), `Storage/` (JSON store, legacy XML importer, paths). Knows nothing about configuration or UI, so it builds and tests on macOS.
 - `src/Wording.WordApp/` — `net10.0-windows` WinForms app, its settings, and the list projection. `Program.Main` is the composition root. `EnableWindowsTargeting` lets it compile on non-Windows hosts.
-- `tests/Wording.Core.Tests/` — xUnit, 49 tests, runs on macOS.
-- `macos/` — SwiftPM package. `WordingKit` (logic port + starter pack) and `WordingApp` (SwiftUI). 43 tests. `build-app.sh` assembles and signs `Wording.app`; `make-dmg.sh` wraps it in a disk image.
+- `tests/Wording.Core.Tests/` — xUnit, 47 tests, runs on macOS.
+- `macos/` — SwiftPM package. `WordingKit` (logic port) and `WordingApp` (SwiftUI). 35 tests. No target declares resources, so SwiftPM produces no resource bundle. `build-app.sh` assembles and signs `Wording.app`; `make-dmg.sh` wraps it in a disk image.
 - `windows/Wording.iss` — Inno Setup script for the Windows installer. Only ever built in CI; it cannot be compiled on macOS.
 - `RELEASING.md` — how a release is cut and which Apple secrets it needs. `LICENSE` — GPL-3.0.
 
@@ -121,11 +121,14 @@ by requiring a newer Xcode; anyone building from source would hit the same wall.
 
 Ids are GUIDs. The pre-2026 format recomputed `Id = max + 1` on every add, so deleting the highest-numbered word freed its id for reuse — a real bug regardless of how many machines are involved. Review state travels inside each word record, so copying the file to another machine carries the learning progress with it.
 
-Seeding the same 38-word English→Polish starter pack happens differently per platform, and the word list is consequently duplicated:
-- .NET: `JsonWordStore.ImportLegacyIfEmpty`, called from `Program.Main`, imports `WordsData.xml` found next to the executable or in the working directory. It doubles as the migration path for pre-2026 installs.
-- Swift: `StarterPack` reads the bundled `starter-pack.json` and `seedIfEmpty` applies it **only to an empty store**, so it never touches a file written by the .NET app. There is no XML parser in the Swift port by design.
+**Neither app seeds any words.** Both start empty and create the file on the first save; every word in it is one the user chose. A 38-word English→Polish starter pack used to be seeded on both platforms and was removed in 2026 for two reasons:
 
-If the starter word list changes, change both `src/Wording.Core/WordsData.xml` and `macos/Sources/WordingKit/Resources/starter-pack.json`.
+- `WordSelector` has a non-zero weight floor, so **nothing ever leaves rotation**. Words the user did not choose would keep surfacing forever, permanently diluting their own material — a sample pack is not free, it is a standing tax.
+- On .NET the starter pack and the migration path were the same file. `WordsData.xml` shipped next to the executable and `WordingSettings.FindLegacyXml` probes `AppContext.BaseDirectory` first, so **our copy shadowed the user's own** — anyone migrating from a pre-2026 install got our words instead of theirs. Deleting the shipped copy is what makes that import work.
+
+`LegacyXmlImporter` and `JsonWordStore.ImportLegacyIfEmpty` therefore stay, purely as the migration route: a pre-2026 user drops their `WordsData.xml` next to the executable and it is imported once. The Swift port has no XML parser and no equivalent — a macOS user has no pre-2026 install to migrate from.
+
+**An empty store must not look like a broken app.** With no words the timer fires and shows nothing, so a new user would see a tray icon and then silence, which is indistinguishable from notification permission having been refused. Both ports therefore send **one welcome notification at startup when the store is empty** (`NotificationService.showWelcome` / a `ShowBalloonTip` in the `WordingMain` constructor), and both show an empty state in the list window instead of a blank table. There is no persisted "already welcomed" flag: the store being empty is the condition, so it stops on its own once a word is added.
 
 ## Build, test, run
 
@@ -166,7 +169,7 @@ a passing test suite covers only the host it ran on.
 
 - `osascript display notification` **exits 0 even when nothing is displayed.** It posts as Script Editor and is dropped silently without that app's permission. Exit codes prove nothing about notification delivery.
 - A notification being **delivered to Notification Center is not the same as a banner being displayed.** `terminal-notifier -list` proves the former only. Alert style and Focus decide the latter, and both are TCC-protected — unreadable from a shell, so the user has to check System Settings.
-- **The app bundle was missing its resource bundle for weeks** and nobody noticed, because the failure only happens with no `words.json` on disk — every new user, no developer. Test the first-run path deliberately: move the data file aside and launch.
+- **The app bundle was missing its resource bundle for weeks** and nobody noticed, because the failure only happens with no `words.json` on disk — every new user, no developer. The resource is gone now, but the habit is the point: test the first-run path deliberately by moving the data file aside and launching. Quit any installed copy first, or it rewrites the file from memory and you end up testing nothing.
 - **The Swift code silently required the newest Xcode.** It compiled locally against SDK 26 and failed on CI's Xcode 16.4, where `UserNotifications` lacks concurrency annotations. A local build proves one toolchain, not the range.
 - **Git Bash rewrote `/DAppVersion=…` into a Windows path**, so the installer compiler saw two script names. Anything Windows-shaped is unverifiable from macOS; expect the first CI run on it to fail.
 
@@ -193,11 +196,12 @@ quarantine attribute set, is accepted by Gatekeeper as `source=Notarized Develop
 Creating the Developer ID certificate is the one step that cannot be automated — the App
 Store Connect API returns 403, Account Holder only.
 
-**`macos/build-app.sh` must copy the SwiftPM resource bundle into `Contents/Resources`.**
-It is not optional packaging polish: `Bundle.module` calls `fatalError` when the bundle
-is absent, so `StarterPack.load()` would kill the app at launch — but only on a machine
-with no `words.json` yet, which is every new user and no developer. CI asserts the
-bundle is present for exactly this reason.
+**If a SwiftPM resource is ever added back, `macos/build-app.sh` must copy its bundle into
+`Contents/Resources`.** This used to be live: `Bundle.module` calls `fatalError` when its
+bundle is absent, so the starter pack loader killed the app at launch — but only on a
+machine with no `words.json` yet, which is every new user and no developer. Dropping the
+starter pack removed the last resource, and with it the copy step and the CI assertion
+that guarded it. CI now checks the executable and `CFBundleIdentifier` instead.
 
 ## Known gaps
 

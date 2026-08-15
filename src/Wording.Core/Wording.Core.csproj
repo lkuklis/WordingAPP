@@ -11,11 +11,10 @@
          testable on macOS. Core reads no configuration - the app layer injects it. -->
   </PropertyGroup>
 
-  <ItemGroup>
-    <!-- Starter pack of English->Polish words. Also the source for the one-off
-         migration from the legacy XML format to words.json. -->
-    <Content Include="WordsData.xml" CopyToOutputDirectory="Always" />
-  </ItemGroup>
+  <!-- Nothing is shipped next to the binary any more. A WordsData.xml used to live
+       here as the starter pack, but FindLegacyXml looks in AppContext.BaseDirectory
+       first, so our copy shadowed the file of anyone migrating from a pre-2026
+       install - they got our words instead of theirs. -->
 
   <ItemGroup>
     <!-- The tests assert on selector weights, which are an implementation detail

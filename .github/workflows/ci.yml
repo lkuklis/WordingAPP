@@ -42,14 +42,14 @@ jobs:
         run: swift test --package-path macos
 
       - name: Assemble the macOS app bundle
-        # Catches packaging regressions - notably a missing resource bundle, which
-        # traps at launch rather than at build time.
+        # Catches packaging regressions that trap at launch rather than at build time.
         run: VERSION=0.0.0-ci ./macos/build-app.sh
 
-      - name: Verify the starter pack travelled into the bundle
+      - name: Verify the app bundle is complete
         run: |
-          BUNDLE=macos/build/Wording.app/Contents/Resources/Wording_WordingKit.bundle
-          test -d "$BUNDLE" || { echo "resource bundle missing from the app"; exit 1; }
-          test -f "$BUNDLE/Contents/Resources/starter-pack.json" \
-            || test -f "$BUNDLE/starter-pack.json" \
-            || { echo "starter-pack.json missing from the resource bundle"; exit 1; }
+          APP=macos/build/Wording.app
+          test -x "$APP/Contents/MacOS/Wording" || { echo "executable missing from the app"; exit 1; }
+          test -f "$APP/Contents/Info.plist" || { echo "Info.plist missing from the app"; exit 1; }
+          # A bare executable has no bundle identifier and UNUserNotificationCenter
+          # traps, so this key is what makes notifications possible at all.
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Contents/Info.plist"

@@ -27,6 +27,15 @@ struct WordListView: View {
                 TableColumn("Next review") { Text(describeDue($0)) }
                     .width(110)
             }
+            .overlay {
+                if model.words.isEmpty {
+                    ContentUnavailableView(
+                        "No words yet",
+                        systemImage: "character.book.closed",
+                        description: Text("Add your first word above and Wording will start showing it in notifications.")
+                    )
+                }
+            }
 
             HStack {
                 Text("Selected:").foregroundStyle(.secondary)

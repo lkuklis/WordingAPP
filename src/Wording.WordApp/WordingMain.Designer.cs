@@ -30,6 +30,7 @@
         {
             this.dataGridWords = new System.Windows.Forms.DataGridView();
             this.btnAddNewWord = new System.Windows.Forms.Button();
+            this.lblEmpty = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.dataGridWords)).BeginInit();
             this.SuspendLayout();
             // 
@@ -51,13 +52,29 @@
             this.btnAddNewWord.Text = "Add";
             this.btnAddNewWord.UseVisualStyleBackColor = true;
             this.btnAddNewWord.Click += new System.EventHandler(this.btnAddNewWord_Click);
-            // 
+            //
+            // lblEmpty
+            //
+            // Shown over the empty grid on a first run - nothing is seeded any more, so
+            // without it the window is a blank table with no hint of what to do.
+            this.lblEmpty.BackColor = System.Drawing.SystemColors.Window;
+            this.lblEmpty.Location = new System.Drawing.Point(12, 12);
+            this.lblEmpty.Name = "lblEmpty";
+            this.lblEmpty.Size = new System.Drawing.Size(524, 413);
+            this.lblEmpty.TabIndex = 2;
+            this.lblEmpty.Text = "No words yet.\r\n\r\nUse Add below to enter your first word, and Wording will start sh" +
+                "owing it in notifications.";
+            this.lblEmpty.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this.lblEmpty.Visible = false;
+            //
             // WordingMain
-            // 
+            //
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(548, 460);
             this.Controls.Add(this.btnAddNewWord);
+            // lblEmpty is added before the grid so it sits in front of it.
+            this.Controls.Add(this.lblEmpty);
             this.Controls.Add(this.dataGridWords);
             this.Name = "WordingMain";
             this.Text = "Wording App";
@@ -73,6 +90,7 @@
 
         private System.Windows.Forms.DataGridView dataGridWords;
         private System.Windows.Forms.Button btnAddNewWord;
+        private System.Windows.Forms.Label lblEmpty;
     }
 }
 

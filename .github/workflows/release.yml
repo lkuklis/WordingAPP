@@ -138,11 +138,6 @@ jobs:
           export SIGN_IDENTITY="${MACOS_SIGN_IDENTITY:-}"
           ./macos/build-app.sh
 
-      - name: Verify the starter pack travelled into the bundle
-        run: |
-          test -d macos/build/Wording.app/Contents/Resources/Wording_WordingKit.bundle \
-            || { echo "resource bundle missing from the app"; exit 1; }
-
       - name: Verify the binary is universal
         run: lipo -archs macos/build/Wording.app/Contents/MacOS/Wording
 

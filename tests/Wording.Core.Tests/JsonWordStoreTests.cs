@@ -133,6 +133,21 @@ public class JsonWordStoreTests
     }
 
     [Fact]
+    public void ImportLegacyIfEmpty_KeepsNonAsciiCharactersThroughJson()
+    {
+        using var dir = new TempDirectory();
+        dir.WriteLegacyXml((1, "default", "domyślnie"), (2, "suppress", "tłumić"));
+
+        new JsonWordStore(dir.JsonFile, Fixtures.Clock()).ImportLegacyIfEmpty(dir.XmlFile);
+
+        // Re-read from disk - this exercises the whole XML to JSON to file round trip.
+        var reloaded = new JsonWordStore(dir.JsonFile, Fixtures.Clock()).GetAll();
+
+        Assert.Contains(reloaded, w => w.Translation == "domyślnie");
+        Assert.Contains(reloaded, w => w.Translation == "tłumić");
+    }
+
+    [Fact]
     public void ImportLegacyIfEmpty_AssignsFreshGuidsInsteadOfOldNumbers()
     {
         using var dir = new TempDirectory();

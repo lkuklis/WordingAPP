@@ -74,12 +74,6 @@ public final class WordStore {
         return true
     }
 
-    /// Appends words in a single save - used when seeding the starter pack.
-    func append(_ newWords: [Word]) throws {
-        words.append(contentsOf: newWords)
-        try save()
-    }
-
     private func save() throws {
         let directory = fileURL.deletingLastPathComponent()
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
