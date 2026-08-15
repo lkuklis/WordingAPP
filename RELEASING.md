@@ -33,40 +33,54 @@ Set these under **Settings → Secrets and variables → Actions**. The workflow
 without them, but the macOS build then ships ad-hoc signed and **Gatekeeper will refuse
 to open it** on any machine that downloaded it.
 
-| Secret | Where it comes from |
+| Secret | Where it comes from | Status |
+|---|---|---|
+| `MACOS_CERTIFICATE` | base64 of the Developer ID `.p12` | needs the certificate below |
+| `MACOS_CERTIFICATE_PWD` | the password used when building the `.p12` | needs the certificate below |
+| `MACOS_SIGN_IDENTITY` | e.g. `Developer ID Application: Jan Kowalski (AB12CD34EF)` | needs the certificate below |
+| `APPLE_API_KEY` | base64 of the App Store Connect API `.p8` | set |
+| `APPLE_API_KEY_ID` | the key id shown next to the key | set |
+| `APPLE_API_ISSUER` | the issuer id shown above the key list | set |
+
+Notarisation authenticates with an App Store Connect API key rather than an Apple ID and
+an app-specific password. It is a team credential, it can be revoked on its own, and it
+keeps a personal account with 2FA out of CI.
+
+### Creating the Developer ID certificate
+
+**This one step cannot be automated.** `POST /v1/certificates` with
+`DEVELOPER_ID_APPLICATION` returns:
+
+```
+HTTP 403 - This operation can only be performed by the Account Holder.
+```
+
+Account Holder is a role held by a person, not something an API key can carry, so no
+amount of raising the key's permissions gets past it. Everything else — reading the
+certificate list, notarisation, setting the repository secrets — does work through the
+API.
+
+A certificate signing request and its private key are already prepared:
+
+| File | What it is |
 |---|---|
-| `MACOS_CERTIFICATE` | base64 of the exported Developer ID `.p12` |
-| `MACOS_CERTIFICATE_PWD` | the password you set when exporting the `.p12` |
-| `MACOS_SIGN_IDENTITY` | e.g. `Developer ID Application: Jan Kowalski (AB12CD34EF)` |
-| `APPLE_ID` | the Apple ID e-mail of the developer account |
-| `APPLE_APP_PASSWORD` | an app-specific password, **not** the account password |
-| `APPLE_TEAM_ID` | the 10-character team id |
+| `~/.appstoreconnect/wording-developerid.csr` | the request to upload; not secret |
+| `~/.appstoreconnect/private_keys/wording-developerid.key` | the matching private key; **never leaves this machine** |
 
-### Getting them
+1. Open <https://developer.apple.com/account/resources/certificates/add>
+2. Pick **Developer ID Application**, and **G2 Sub-CA** if asked which intermediate
+3. Upload `wording-developerid.csr`
+4. Download the resulting `.cer`
 
-1. **Join the Apple Developer Program** ($99/year). Notarisation is not available on a
-   free account.
+Then the `.p12` and the three remaining secrets can be assembled locally from that `.cer`
+plus the private key above.
 
-2. **Create a Developer ID Application certificate.** In Xcode: *Settings → Accounts →
-   Manage Certificates → + → Developer ID Application*. It lands in your login keychain.
+Using Xcode's *Settings → Accounts → Manage Certificates* instead also works, but it
+generates its own key pair in the login keychain, so the `.p12` has to be exported from
+Keychain Access afterwards.
 
-3. **Export it.** In Keychain Access find the certificate, expand it so the private key
-   is included, right-click → *Export* → `.p12`, and set a password. Then:
-
-   ```bash
-   base64 -i Certificates.p12 | pbcopy    # paste as MACOS_CERTIFICATE
-   ```
-
-4. **Read the identity name** — this is the exact string the workflow signs with:
-
-   ```bash
-   security find-identity -v -p codesigning
-   ```
-
-5. **Create an app-specific password** at <https://appleid.apple.com> → *Sign-In and
-   Security → App-Specific Passwords*. This is what `notarytool` authenticates with.
-
-6. **Find the team id** at <https://developer.apple.com/account> under *Membership*.
+Developer ID certificates are limited per team and awkward to replace, so check
+`GET /v1/certificates` before creating another one.
 
 ## Windows and SmartScreen
 

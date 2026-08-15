@@ -114,3 +114,8 @@ macos/build/
 
 # Release artefacts
 dist/
+
+# Signing keys - never commit these
+*.p8
+*.p12
+*.mobileprovision

@@ -98,9 +98,9 @@ jobs:
       MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
       MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
       MACOS_SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
-      APPLE_ID: ${{ secrets.APPLE_ID }}
-      APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
-      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+      APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+      APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
 
     steps:
       - uses: actions/checkout@v4
@@ -151,18 +151,26 @@ jobs:
         run: |
           DMG="macos/build/Wording-$VERSION-macos-universal.dmg"
 
-          if [ -z "$APPLE_ID" ] || [ -z "$APPLE_APP_PASSWORD" ] || [ -z "$APPLE_TEAM_ID" ]; then
+          if [ -z "$APPLE_API_KEY" ] || [ -z "$APPLE_API_KEY_ID" ] || [ -z "$APPLE_API_ISSUER" ]; then
             echo "::warning::Notarisation credentials missing - shipping an un-notarised disk image."
             exit 0
           fi
 
+          # An App Store Connect API key rather than an Apple ID and app-specific
+          # password: it is a team credential, can be revoked on its own, and does not
+          # drag a personal account with 2FA into CI.
+          KEY_FILE="$RUNNER_TEMP/AuthKey.p8"
+          echo "$APPLE_API_KEY" | base64 --decode > "$KEY_FILE"
+
           # --wait blocks until Apple returns a verdict, so a rejection fails the build
           # instead of quietly publishing something Gatekeeper will reject.
           xcrun notarytool submit "$DMG" \
-            --apple-id "$APPLE_ID" \
-            --password "$APPLE_APP_PASSWORD" \
-            --team-id "$APPLE_TEAM_ID" \
+            --key "$KEY_FILE" \
+            --key-id "$APPLE_API_KEY_ID" \
+            --issuer "$APPLE_API_ISSUER" \
             --wait
+
+          rm -f "$KEY_FILE"
 
           xcrun stapler staple "$DMG"
           xcrun stapler validate "$DMG"
