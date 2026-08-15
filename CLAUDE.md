@@ -212,8 +212,16 @@ when that changes. To rehearse without publishing, run the workflow manually —
 `workflow_dispatch` run builds artefacts but creates no release, because publishing is
 gated on `github.event_name == 'push'`.
 
-Verified on 2026.8.0: the published `.dmg`, downloaded from the release page with the
-quarantine attribute set, is accepted by Gatekeeper as `source=Notarized Developer ID`.
+Verified on 2026.8.0 and again on 2026.8.1: downloading the published `.dmg`, setting the
+quarantine attribute and mounting it, `spctl -a -vvv` on **`Wording.app` inside** reports
+`accepted / source=Notarized Developer ID`.
+
+Assess the app, not the disk image. `spctl` on the `.dmg` itself answers
+`rejected / source=no usable signature`, and `codesign -dv` calls it unsigned — for both
+releases, so it is how this pipeline has always worked, not a regression. The image is
+notarised and stapled (`xcrun stapler validate` on the `.dmg` passes) but never
+code-signed, and Gatekeeper gates the launch of the app. Checking the wrong object here
+costs an afternoon chasing a signing bug that does not exist.
 Creating the Developer ID certificate is the one step that cannot be automated — the App
 Store Connect API returns 403, Account Holder only.
 
