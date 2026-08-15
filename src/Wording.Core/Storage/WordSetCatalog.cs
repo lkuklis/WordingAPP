@@ -16,6 +16,32 @@ namespace Wording.Core.Storage;
 /// </summary>
 public static class WordSetCatalog
 {
+    /// <summary>
+    /// The file the app should open for a remembered set choice.
+    /// <para>
+    /// Falls back to the user's own words whenever that choice cannot be honoured - no
+    /// choice made, an identifier that is not a safe slug, or a set deleted from disk
+    /// since it was chosen. Refusing to start because a remembered set has gone would
+    /// leave the user with an app that will not open.
+    /// </para>
+    /// </summary>
+    public static string ResolveActiveFile(
+        string? setId,
+        string? dataFile = null,
+        string? setsDirectory = null)
+    {
+        var ownWords = dataFile ?? WordingPaths.DataFile();
+
+        if (!Packs.PackSlug.TryNormalize(setId, out var slug))
+        {
+            return ownWords;
+        }
+
+        var path = WordingPaths.SetFile(slug, setsDirectory);
+
+        return File.Exists(path) ? path : ownWords;
+    }
+
     public static IReadOnlyList<WordSetInfo> List(string? setsDirectory = null)
     {
         var directory = setsDirectory ?? WordingPaths.SetsDirectory();

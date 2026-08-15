@@ -76,6 +76,51 @@ public class WordSetCatalogTests
         Assert.Equal("travel-basics", Assert.Single(WordSetCatalog.List(dir.SetsDirectory)).Id);
     }
 
+    [Fact]
+    public void ResolveActiveFile_WithNoChoiceOpensTheUsersOwnWords()
+    {
+        using var dir = new TempDirectory();
+
+        Assert.Equal(dir.JsonFile, WordSetCatalog.ResolveActiveFile(null, dir.JsonFile, dir.SetsDirectory));
+        Assert.Equal(dir.JsonFile, WordSetCatalog.ResolveActiveFile("", dir.JsonFile, dir.SetsDirectory));
+    }
+
+    [Fact]
+    public void ResolveActiveFile_OpensTheChosenSet()
+    {
+        using var dir = new TempDirectory();
+        Import(dir, "travel-basics", "Travel basics", ("airport", "aeropuerto"));
+
+        Assert.Equal(
+            dir.SetFile("travel-basics"),
+            WordSetCatalog.ResolveActiveFile("travel-basics", dir.JsonFile, dir.SetsDirectory));
+    }
+
+    [Fact]
+    public void ResolveActiveFile_FallsBackWhenTheRememberedSetIsGone()
+    {
+        // Deleted by hand between runs. Refusing to start would leave the user with an
+        // app that will not open.
+        using var dir = new TempDirectory();
+
+        Assert.Equal(
+            dir.JsonFile,
+            WordSetCatalog.ResolveActiveFile("deleted-set", dir.JsonFile, dir.SetsDirectory));
+    }
+
+    [Theory]
+    [InlineData("../words")]
+    [InlineData("/etc/passwd")]
+    [InlineData("con")]
+    public void ResolveActiveFile_NeverHonoursAnIdentifierThatIsNotASafeSlug(string setId)
+    {
+        // The remembered id comes off disk, so it gets the same treatment as one from a
+        // downloaded pack.
+        using var dir = new TempDirectory();
+
+        Assert.Equal(dir.JsonFile, WordSetCatalog.ResolveActiveFile(setId, dir.JsonFile, dir.SetsDirectory));
+    }
+
     static void Import(TempDirectory dir, string id, string name, params (string, string)[] words) =>
         new WordPackImporter(dir.SetsDirectory, Fixtures.Clock()).Import(
             new WordPack

@@ -21,15 +21,31 @@ final class AppModel {
     private enum Keys {
         static let paused = "isPaused"
         static let interval = "intervalSeconds"
+        static let activeSet = "activeSetId"
     }
 
     private let notifications = NotificationService()
+    private let downloader = PackDownloader()
+    private let importer = WordPackImporter()
     private var timer: Timer?
 
     var manager: WordManager?
     var words: [Word] = []
     var lastShown: Word?
     var statusMessage = ""
+
+    /// Imported sets available to switch to, read from disk rather than remembered.
+    var sets: [WordSetInfo] = []
+
+    /// nil means the user's own words. Persisted, so the choice survives a restart.
+    private(set) var activeSetId: String? = UserDefaults.standard.string(forKey: Keys.activeSet)
+
+    /// What the menu and the list window call the set in use.
+    var activeSetName: String {
+        guard let activeSetId else { return "My words" }
+
+        return sets.first { $0.id == activeSetId }?.name ?? activeSetId
+    }
 
     // Initial values are read in the property initialiser, where didSet does not run
     // yet - otherwise startup would write back to UserDefaults what it had just read
@@ -49,17 +65,7 @@ final class AppModel {
     }
 
     func start() async {
-        do {
-            // The file is created by the first save; a missing one is simply an empty
-            // store. Nothing is seeded - the words are the user's own.
-            let store = try WordStore()
-
-            manager = WordManager(store: store)
-            refresh()
-        } catch {
-            statusMessage = "Could not load words: \(error.localizedDescription)"
-            return
-        }
+        guard open(setId: activeSetId) else { return }
 
         await notifications.prepare()
         await updateAuthorizationMessage()
@@ -73,6 +79,46 @@ final class AppModel {
 
     func refresh() {
         words = (manager?.words ?? []).sorted { $0.review.dueUtc < $1.review.dueUtc }
+        sets = WordSetCatalog.list()
+    }
+
+    /// Switches which set the app is learning from.
+    ///
+    /// Everything goes through here rather than each screen opening its own store: one
+    /// active store per process is the invariant, and a screen left holding the previous
+    /// manager would write through a stale in-memory copy.
+    func switchTo(setId: String?) {
+        guard setId != activeSetId else { return }
+        guard open(setId: setId) else { return }
+
+        activeSetId = setId
+        UserDefaults.standard.set(setId, forKey: Keys.activeSet)
+
+        restartTimer()
+    }
+
+    /// Opens the store for a set and hands the same manager to every screen.
+    /// - Returns: false when the file could not be read, having said so in the status.
+    @discardableResult
+    private func open(setId: String?) -> Bool {
+        let fileURL = WordSetCatalog.resolveActiveFile(setId)
+
+        do {
+            // The file is created by the first save; a missing one is simply an empty
+            // store. Nothing is seeded - the words are the user's own.
+            manager = WordManager(store: try WordStore(fileURL: fileURL))
+        } catch {
+            statusMessage = "Could not load words: \(error.localizedDescription)"
+            return false
+        }
+
+        // The pending grade belongs to a word from the set being closed. Applying it
+        // after the switch would either miss or, worse, hit an unrelated word.
+        lastShown = nil
+        statusMessage = ""
+
+        refresh()
+        return true
     }
 
     func showNextWord() {
@@ -140,6 +186,53 @@ final class AppModel {
     var dueCount: Int {
         let now = Date()
         return words.count { $0.isDue(at: now) }
+    }
+
+    // MARK: - Word packs
+
+    /// Reads what the user typed as an address, before anything is fetched.
+    func address(from typed: String) throws -> URL {
+        let trimmed = typed.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard let url = URL(string: trimmed), url.scheme != nil, url.host() != nil else {
+            throw WordPackError.malformed("that is not a web address")
+        }
+
+        return url
+    }
+
+    /// Downloads and validates, without writing anything: the user confirms first.
+    func download(_ url: URL) async throws -> WordPack {
+        try await downloader.download(from: url)
+    }
+
+    func alreadyHave(_ pack: WordPack) -> Bool { importer.exists(pack) }
+
+    /// How many of the pack's words a set on disk does not have yet.
+    func newWordCount(in pack: WordPack) -> Int {
+        guard let fileURL = try? importer.path(for: pack),
+            let existing = try? WordStore(fileURL: fileURL)
+        else {
+            return pack.words.count
+        }
+
+        let seen = Set(existing.words.map { key($0.original, $0.translation) })
+
+        return pack.words.count { !seen.contains(key($0.original, $0.translation)) }
+    }
+
+    @discardableResult
+    func importPack(_ pack: WordPack, from url: URL, replaceExisting: Bool) throws -> PackImportResult {
+        let result = try importer.import(pack, from: url, replaceExisting: replaceExisting)
+
+        refresh()
+        return result
+    }
+
+    private func key(_ original: String, _ translation: String) -> String {
+        original.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            + " "
+            + translation.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     }
 
     private func restartTimer() {

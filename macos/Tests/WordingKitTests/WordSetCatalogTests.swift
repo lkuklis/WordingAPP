@@ -24,6 +24,49 @@ import Testing
         )
     }
 
+    @Test func resolveActiveFileWithNoChoiceOpensTheUsersOwnWords() throws {
+        let dir = try TempDirectory()
+
+        #expect(
+            WordSetCatalog.resolveActiveFile(nil, dataFile: dir.jsonFile, setsDirectory: dir.setsDirectory)
+                == dir.jsonFile)
+        #expect(
+            WordSetCatalog.resolveActiveFile("", dataFile: dir.jsonFile, setsDirectory: dir.setsDirectory)
+                == dir.jsonFile)
+    }
+
+    @Test func resolveActiveFileOpensTheChosenSet() throws {
+        let dir = try TempDirectory()
+        try Self.import(dir, id: "travel-basics", name: "Travel basics", ("airport", "aeropuerto"))
+
+        #expect(
+            WordSetCatalog.resolveActiveFile(
+                "travel-basics", dataFile: dir.jsonFile, setsDirectory: dir.setsDirectory)
+                == dir.setFile("travel-basics"))
+    }
+
+    @Test func resolveActiveFileFallsBackWhenTheRememberedSetIsGone() throws {
+        // Deleted by hand between runs. Refusing to start would leave the user with an
+        // app that will not open.
+        let dir = try TempDirectory()
+
+        #expect(
+            WordSetCatalog.resolveActiveFile(
+                "deleted-set", dataFile: dir.jsonFile, setsDirectory: dir.setsDirectory)
+                == dir.jsonFile)
+    }
+
+    @Test(arguments: ["../words", "/etc/passwd", "con"])
+    func resolveActiveFileNeverHonoursAnIdentifierThatIsNotASafeSlug(setId: String) throws {
+        // The remembered id comes out of UserDefaults, so it gets the same treatment as
+        // one from a downloaded pack.
+        let dir = try TempDirectory()
+
+        #expect(
+            WordSetCatalog.resolveActiveFile(setId, dataFile: dir.jsonFile, setsDirectory: dir.setsDirectory)
+                == dir.jsonFile)
+    }
+
     @Test func isEmptyBeforeAnythingIsImported() throws {
         let dir = try TempDirectory()
 

@@ -3,6 +3,7 @@ using System.Linq;
 using System.Windows.Forms;
 using Wording.Core;
 using Wording.Core.Learning;
+using Wording.Core.Storage;
 using Wording.WordApp.Properties;
 
 namespace Wording.WordApp;
@@ -17,23 +18,36 @@ public partial class WordingMain : Form
         ("Don't know", ReviewGrade.Again),
     ];
 
-    readonly WordManager _manager;
     readonly NotifyIcon _notifyIcon;
     readonly System.Windows.Forms.Timer _timer;
     readonly int _showTimeMs;
     readonly ToolStripMenuItem[] _gradeItems;
+    readonly ToolStripMenuItem _setsMenu;
+    readonly WordingSettings _settings;
+    readonly WordingState _state;
+
+    /// <summary>
+    /// Replaced when the user switches sets. Only this form does that, so there is still
+    /// one active store per process - a screen left holding the previous manager would
+    /// write through a stale in-memory copy.
+    /// </summary>
+    WordManager _manager;
 
     /// <summary>The word shown last - the tray menu grades apply to it.</summary>
     Word? _lastShown;
 
-    public WordingMain(WordManager manager, WordingSettings settings)
+    public WordingMain(WordManager manager, WordingSettings settings, WordingState state)
     {
         ArgumentNullException.ThrowIfNull(manager);
         ArgumentNullException.ThrowIfNull(settings);
+        ArgumentNullException.ThrowIfNull(state);
 
         InitializeComponent();
 
         _manager = manager;
+        _settings = settings;
+        _state = state;
+        _setsMenu = new ToolStripMenuItem("Learning set");
         _showTimeMs = settings.ShowTimeSeconds * 1000;
 
         _gradeItems = [.. Grades.Select(grade =>
@@ -81,12 +95,93 @@ public partial class WordingMain : Form
 
         menu.Items.AddRange(_gradeItems);
         menu.Items.Add(new ToolStripSeparator());
+        menu.Items.Add(_setsMenu);
+        menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(new ToolStripMenuItem("Show window", null, (_, _) => ShowWindow()));
         menu.Items.Add(new ToolStripMenuItem("Exit", null, (_, _) => Application.Exit()));
 
-        menu.Opening += (_, _) => UpdateGradeItems();
+        menu.Opening += (_, _) =>
+        {
+            UpdateGradeItems();
+
+            // Rebuilt on every open: sets appear and disappear on disk, and a menu built
+            // once at startup would keep offering one that has been deleted.
+            RebuildSetsMenu();
+        };
 
         return menu;
+    }
+
+    void RebuildSetsMenu()
+    {
+        _setsMenu.DropDownItems.Clear();
+        _setsMenu.Text = $"Learning set — {ActiveSetName()}";
+
+        _setsMenu.DropDownItems.Add(new ToolStripMenuItem("My words", null, (_, _) => SwitchTo(null))
+        {
+            Checked = _state.ActiveSetId is null,
+        });
+
+        var sets = WordSetCatalog.List();
+
+        if (sets.Count > 0)
+        {
+            _setsMenu.DropDownItems.Add(new ToolStripSeparator());
+
+            foreach (var set in sets)
+            {
+                var id = set.Id;
+
+                _setsMenu.DropDownItems.Add(
+                    new ToolStripMenuItem($"{set.Name} ({set.WordCount})", null, (_, _) => SwitchTo(id))
+                    {
+                        Checked = _state.ActiveSetId == id,
+                    });
+            }
+        }
+
+        _setsMenu.DropDownItems.Add(new ToolStripSeparator());
+        _setsMenu.DropDownItems.Add(new ToolStripMenuItem("Import from a URL…", null, (_, _) => ImportFromUrl()));
+    }
+
+    string ActiveSetName()
+    {
+        if (_state.ActiveSetId is not { } id)
+        {
+            return "My words";
+        }
+
+        return WordSetCatalog.List().FirstOrDefault(set => set.Id == id)?.Name ?? id;
+    }
+
+    void SwitchTo(string? setId)
+    {
+        if (setId == _state.ActiveSetId)
+        {
+            return;
+        }
+
+        var path = WordSetCatalog.ResolveActiveFile(setId, _settings.ResolveDataFile());
+
+        _manager = new WordManager(new JsonWordStore(path));
+        _state.Remember(setId);
+
+        // The pending grade belongs to a word from the set being closed. Applying it
+        // after the switch would either miss or, worse, hit an unrelated word.
+        _lastShown = null;
+
+        RefreshGrid();
+    }
+
+    void ImportFromUrl()
+    {
+        using var dialog = new ImportPack();
+        dialog.ShowDialog(this);
+
+        if (dialog.ImportedAnything)
+        {
+            RebuildSetsMenu();
+        }
     }
 
     void UpdateGradeItems()

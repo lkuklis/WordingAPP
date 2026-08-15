@@ -52,7 +52,8 @@ struct WordListView: View {
             .disabled(selection == nil)
 
             HStack {
-                Text("\(model.words.count) words · \(model.dueCount) due now")
+                // Which set is open matters here: adding and deleting write to it.
+                Text("\(model.activeSetName) · \(model.words.count) words · \(model.dueCount) due now")
                     .font(.caption)
                     .foregroundStyle(.secondary)
 

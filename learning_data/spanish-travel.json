@@ -1,0 +1,32 @@
+{
+  "id": "spanish-travel",
+  "name": "English → Spanish, travel",
+  "description": "Words you need in an airport, a station and a hotel.",
+  "words": [
+    { "original": "airport", "translation": "aeropuerto" },
+    { "original": "train station", "translation": "estación de tren" },
+    { "original": "ticket", "translation": "billete" },
+    { "original": "departure", "translation": "salida" },
+    { "original": "arrival", "translation": "llegada" },
+    { "original": "delayed", "translation": "retrasado" },
+    { "original": "luggage", "translation": "equipaje" },
+    { "original": "seat", "translation": "asiento" },
+    { "original": "aisle", "translation": "pasillo" },
+    { "original": "window", "translation": "ventana" },
+    { "original": "hotel", "translation": "hotel" },
+    { "original": "room", "translation": "habitación" },
+    { "original": "key", "translation": "llave" },
+    { "original": "booking", "translation": "reserva" },
+    { "original": "receipt", "translation": "recibo" },
+    { "original": "how much does it cost?", "translation": "¿cuánto cuesta?" },
+    { "original": "where is…?", "translation": "¿dónde está…?" },
+    { "original": "on the left", "translation": "a la izquierda" },
+    { "original": "on the right", "translation": "a la derecha" },
+    { "original": "straight ahead", "translation": "todo recto" },
+    { "original": "open", "translation": "abierto" },
+    { "original": "closed", "translation": "cerrado" },
+    { "original": "today", "translation": "hoy" },
+    { "original": "tomorrow", "translation": "mañana" },
+    { "original": "thank you", "translation": "gracias" }
+  ]
+}

@@ -11,6 +11,26 @@ import Foundation
 ///
 /// A port of `Wording.Core.Storage.WordSetCatalog`.
 public enum WordSetCatalog {
+    /// The file the app should open for a remembered set choice.
+    ///
+    /// Falls back to the user's own words whenever that choice cannot be honoured - no
+    /// choice made, an identifier that is not a safe slug, or a set deleted from disk
+    /// since it was chosen. Refusing to start because a remembered set has gone would
+    /// leave the user with an app that will not open.
+    public static func resolveActiveFile(
+        _ setId: String?,
+        dataFile: URL? = nil,
+        setsDirectory: URL? = nil
+    ) -> URL {
+        let ownWords = dataFile ?? WordingPaths.dataFile()
+
+        guard let slug = PackSlug.normalize(setId) else { return ownWords }
+
+        let url = WordingPaths.setFile(slug, in: setsDirectory)
+
+        return FileManager.default.fileExists(atPath: url.path(percentEncoded: false)) ? url : ownWords
+    }
+
     public static func list(in setsDirectory: URL? = nil) -> [WordSetInfo] {
         let directory = setsDirectory ?? WordingPaths.setsDirectory()
 

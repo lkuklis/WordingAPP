@@ -17,6 +17,11 @@ struct WordingApp: App {
             WordListView(model: model)
         }
         .defaultSize(width: 760, height: 560)
+
+        Window("Import a word pack", id: "import") {
+            ImportPackView(model: model)
+        }
+        .windowResizability(.contentSize)
     }
 }
 
@@ -42,6 +47,25 @@ struct MenuContent: View {
         Menu("Interval") {
             ForEach(AppModel.intervalOptions, id: \.label) { option in
                 Button(option.label) { model.intervalSeconds = option.seconds }
+            }
+        }
+
+        Menu("Learning set — \(model.activeSetName)") {
+            Button("My words") { model.switchTo(setId: nil) }
+
+            if !model.sets.isEmpty {
+                Divider()
+
+                ForEach(model.sets) { set in
+                    Button("\(set.name) (\(set.wordCount))") { model.switchTo(setId: set.id) }
+                }
+            }
+
+            Divider()
+
+            Button("Import from a URL…") {
+                openWindow(id: "import")
+                NSApp.activate(ignoringOtherApps: true)
             }
         }
 
