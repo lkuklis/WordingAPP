@@ -3,37 +3,22 @@ import Testing
 
 @testable import WordingKit
 
-/// Deterministyczny generator, zeby testy rozkladu nie byly kruche.
-struct SeededGenerator: RandomNumberGenerator {
-    private var state: UInt64
-
-    init(seed: UInt64) { state = seed &+ 0x9E37_79B9_7F4A_7C15 }
-
-    mutating func next() -> UInt64 {
-        state = state &+ 0x9E37_79B9_7F4A_7C15
-        var z = state
-        z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
-        z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
-        return z ^ (z >> 31)
-    }
-}
-
 @Suite struct WordSelectorTests {
-    static let teraz = Date(timeIntervalSince1970: 1_786_000_000)
+    static let teraz = Fixtures.teraz
 
     static func slowko(
-        _ oryginal: String,
-        termin: Date? = nil,
-        juzPowtarzane: Bool = true
+        _ original: String,
+        due: Date? = nil,
+        reviewed: Bool = true
     ) -> Word {
         Word(
-            original: oryginal,
-            translation: oryginal + "-pl",
+            original: original,
+            translation: original + "-pl",
             createdUtc: teraz,
             review: ReviewState(
-                repetitions: juzPowtarzane ? 1 : 0,
-                dueUtc: termin ?? teraz,
-                lastReviewedUtc: juzPowtarzane ? teraz.addingTimeInterval(-86_400) : nil
+                repetitions: reviewed ? 1 : 0,
+                dueUtc: due ?? teraz,
+                lastReviewedUtc: reviewed ? teraz.addingTimeInterval(-.day) : nil
             )
         )
     }
@@ -41,92 +26,84 @@ struct SeededGenerator: RandomNumberGenerator {
     @Test func pustaListaZwracaNil() {
         var generator = SeededGenerator(seed: 1)
 
-        #expect(WordSelector().pickNext(from: [], now: Self.teraz, using: &generator) == nil)
+        #expect(WordSelector.pickNext(from: [], now: Self.teraz, using: &generator) == nil)
     }
 
     @Test func jednoSlowkoZwracaJe() {
         var generator = SeededGenerator(seed: 1)
-        let slowo = Self.slowko("scope")
+        let word = Self.slowko("scope")
 
-        let wybrane = WordSelector().pickNext(from: [slowo], now: Self.teraz, using: &generator)
-
-        #expect(wybrane?.id == slowo.id)
+        #expect(WordSelector.pickNext(from: [word], now: Self.teraz, using: &generator)?.id == word.id)
     }
 
     @Test func noweSlowkoMaWyzszaWageNizSlowkoWTerminie() {
-        let nowe = Self.slowko("nowe", juzPowtarzane: false)
-        let wTerminie = Self.slowko("wterminie", termin: Self.teraz)
+        let fresh = Self.slowko("nowe", reviewed: false)
+        let due = Self.slowko("wterminie", due: Self.teraz)
 
         #expect(
-            WordSelector.weight(for: nowe, now: Self.teraz)
-                > WordSelector.weight(for: wTerminie, now: Self.teraz)
+            WordSelector.weight(for: fresh, now: Self.teraz)
+                > WordSelector.weight(for: due, now: Self.teraz)
         )
     }
 
     @Test func wagaRosnieWrazZOpoznieniem() {
-        let swieze = Self.slowko("swieze", termin: Self.teraz)
-        let dzien = Self.slowko("dzien", termin: Self.teraz.addingTimeInterval(-86_400))
-        let tydzien = Self.slowko("tydzien", termin: Self.teraz.addingTimeInterval(-7 * 86_400))
+        let onTime = WordSelector.weight(for: Self.slowko("swieze", due: Self.teraz), now: Self.teraz)
+        let oneDay = WordSelector.weight(
+            for: Self.slowko("dzien", due: Self.teraz.addingTimeInterval(-.day)), now: Self.teraz)
+        let oneWeek = WordSelector.weight(
+            for: Self.slowko("tydzien", due: Self.teraz.addingTimeInterval(-7 * .day)), now: Self.teraz)
 
-        let w1 = WordSelector.weight(for: swieze, now: Self.teraz)
-        let w2 = WordSelector.weight(for: dzien, now: Self.teraz)
-        let w3 = WordSelector.weight(for: tydzien, now: Self.teraz)
-
-        #expect(w1 < w2)
-        #expect(w2 < w3)
+        #expect(onTime < oneDay)
+        #expect(oneDay < oneWeek)
     }
 
     @Test func wagaJestOgraniczonaZGory() {
-        let rok = Self.slowko("stare", termin: Self.teraz.addingTimeInterval(-365 * 86_400))
-        let dekada = Self.slowko("bardzostare", termin: Self.teraz.addingTimeInterval(-3650 * 86_400))
+        let year = WordSelector.weight(
+            for: Self.slowko("stare", due: Self.teraz.addingTimeInterval(-365 * .day)), now: Self.teraz)
+        let decade = WordSelector.weight(
+            for: Self.slowko("bardzostare", due: Self.teraz.addingTimeInterval(-3650 * .day)), now: Self.teraz)
 
-        #expect(
-            WordSelector.weight(for: rok, now: Self.teraz)
-                == WordSelector.weight(for: dekada, now: Self.teraz)
-        )
+        #expect(year == decade)
     }
 
     @Test func slowkoNiewymagalneMaMalaAleNiezerowaWage() {
-        let zaMiesiac = Self.slowko("znane", termin: Self.teraz.addingTimeInterval(30 * 86_400))
+        let weight = WordSelector.weight(
+            for: Self.slowko("znane", due: Self.teraz.addingTimeInterval(30 * .day)), now: Self.teraz)
 
-        let waga = WordSelector.weight(for: zaMiesiac, now: Self.teraz)
-
-        #expect(waga > 0)
-        #expect(waga < WordSelector.dueWeight)
+        #expect(weight > 0)
+        #expect(weight < WordSelector.dueWeight)
     }
 
     @Test func przeterminowaneJestLosowaneZnacznieCzesciej() {
-        let przeterminowane = Self.slowko("zapomniane", termin: Self.teraz.addingTimeInterval(-10 * 86_400))
-        let znane = Self.slowko("znane", termin: Self.teraz.addingTimeInterval(30 * 86_400))
-        let lista = [przeterminowane, znane]
+        let overdue = Self.slowko("zapomniane", due: Self.teraz.addingTimeInterval(-10 * .day))
+        let known = Self.slowko("znane", due: Self.teraz.addingTimeInterval(30 * .day))
+        let words = [overdue, known]
 
         var generator = SeededGenerator(seed: 42)
-        var trafienia = 0
-        let prob = 2000
+        var hits = 0
+        let attempts = 2000
 
-        for _ in 0..<prob {
-            if WordSelector().pickNext(from: lista, now: Self.teraz, using: &generator)?.id
-                == przeterminowane.id
-            {
-                trafienia += 1
+        for _ in 0..<attempts {
+            if WordSelector.pickNext(from: words, now: Self.teraz, using: &generator)?.id == overdue.id {
+                hits += 1
             }
         }
 
-        #expect(trafienia > Int(Double(prob) * 0.9))
+        #expect(hits > Int(Double(attempts) * 0.9))
     }
 
     @Test func przyRownychWagachRozkladJestZblizonyDoJednostajnego() {
-        let lista = [Self.slowko("a"), Self.slowko("b"), Self.slowko("c")]
+        let words = [Self.slowko("a"), Self.slowko("b"), Self.slowko("c")]
         var generator = SeededGenerator(seed: 7)
-        var licznik: [String: Int] = ["a": 0, "b": 0, "c": 0]
+        var counts: [String: Int] = ["a": 0, "b": 0, "c": 0]
 
         for _ in 0..<3000 {
-            let wybrane = WordSelector().pickNext(from: lista, now: Self.teraz, using: &generator)!
-            licznik[wybrane.original, default: 0] += 1
+            let picked = WordSelector.pickNext(from: words, now: Self.teraz, using: &generator)!
+            counts[picked.original, default: 0] += 1
         }
 
-        for (slowo, ile) in licznik {
-            #expect(ile > 800 && ile < 1200, "\(slowo) trafilo \(ile) razy")
+        for (word, count) in counts {
+            #expect(count > 800 && count < 1200, "\(word) trafilo \(count) razy")
         }
     }
 }

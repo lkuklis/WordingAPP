@@ -2,9 +2,8 @@ import Foundation
 
 /// Startowy pakiet slowek EN->PL dolaczony do aplikacji.
 ///
-/// Odpowiednik tego, co po stronie .NET robi import z WordsData.xml, tyle ze
-/// w JSON - port na macOS celowo nie ma parsera starego formatu XML.
-/// Sluzy wylacznie do zasiania pustego magazynu przy pierwszym uruchomieniu.
+/// Odpowiednik importu z WordsData.xml po stronie .NET, tyle ze w JSON -
+/// port na macOS celowo nie ma parsera starego formatu XML.
 public enum StarterPack {
     struct Entry: Decodable {
         let original: String
@@ -32,20 +31,21 @@ public enum StarterPack {
 extension WordStore {
     /// Zasiewa magazyn pakietem startowym, ale wylacznie gdy jest pusty.
     /// Nigdy nie nadpisuje danych, ktore juz sa - takze tych zapisanych
-    /// przez powloke .NET, bo obie aplikacje pracuja na jednym pliku.
+    /// przez aplikacje .NET, bo obie pracuja na jednym pliku.
     /// - Returns: liczba dodanych slowek.
     @discardableResult
     public func seedIfEmpty(now: Date = Date()) throws -> Int {
         guard words.isEmpty else { return 0 }
 
-        let pakiet = try StarterPack.load()
+        let pack = try StarterPack.load()
 
-        guard !pakiet.isEmpty else { return 0 }
+        guard !pack.isEmpty else { return 0 }
 
-        for wpis in pakiet {
-            _ = try add(original: wpis.original, translation: wpis.translation, now: now)
-        }
+        // Jeden zapis zamiast jednego na slowko.
+        try append(pack.map {
+            Word(original: $0.original, translation: $0.translation, createdUtc: now, review: .new(now: now))
+        })
 
-        return pakiet.count
+        return pack.count
     }
 }

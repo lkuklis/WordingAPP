@@ -1,15 +1,12 @@
-using Microsoft.Extensions.Time.Testing;
 using Wording.Core.Storage;
 
 namespace Wording.Core.Tests;
 
 /// <summary>
-/// Migracja na prawdziwym pakiecie startowym z repozytorium, nie na danych syntetycznych.
+/// Import na prawdziwym pakiecie startowym z repozytorium, nie na danych syntetycznych.
 /// </summary>
 public class StarterPackMigrationTests
 {
-    static readonly DateTimeOffset Teraz = new(2026, 8, 14, 12, 0, 0, TimeSpan.Zero);
-
     static string PakietStartowy =>
         Path.Combine(AppContext.BaseDirectory, WordingPaths.LegacyDataFileName);
 
@@ -20,41 +17,38 @@ public class StarterPackMigrationTests
     }
 
     [Fact]
-    public void PakietStartowy_MigrujeSieWCalosciIBezPustychWpisow()
+    public void PakietStartowy_ImportujeSieWCalosciIBezPustychWpisow()
     {
-        using var katalog = new TempKatalog();
+        using var dir = new TempDirectory();
+        var store = new JsonWordStore(dir.JsonFile, Fixtures.Zegar());
 
-        var magazyn = JsonWordStore.OpenOrMigrate(
-            katalog.PlikJson,
-            PakietStartowy,
-            new FakeTimeProvider(Teraz));
+        Assert.Equal(38, store.ImportLegacyIfEmpty(PakietStartowy));
 
-        var slowka = magazyn.GetAll();
+        var words = store.GetAll();
 
-        Assert.Equal(38, slowka.Count);
-        Assert.All(slowka, slowo =>
+        Assert.All(words, word =>
         {
-            Assert.NotEqual(Guid.Empty, slowo.Id);
-            Assert.NotEmpty(slowo.Original);
-            Assert.NotEmpty(slowo.Translation);
-            Assert.Equal(Teraz, slowo.Review.DueUtc);
-            Assert.Null(slowo.Review.LastReviewedUtc);
+            Assert.NotEqual(Guid.Empty, word.Id);
+            Assert.NotEmpty(word.Original);
+            Assert.NotEmpty(word.Translation);
+            Assert.True(word.IsNew);
+            Assert.True(word.IsDue(Fixtures.Teraz));
         });
 
-        Assert.Contains(slowka, s => s.Original == "scope" && s.Translation == "zakres");
-        Assert.Equal(38, slowka.Select(s => s.Id).Distinct().Count());
+        Assert.Contains(words, w => w.Original == "scope" && w.Translation == "zakres");
+        Assert.Equal(38, words.Select(w => w.Id).Distinct().Count());
     }
 
     [Fact]
     public void PakietStartowy_ZachowujePolskieZnakiPoPrzejsciuPrzezJson()
     {
-        using var katalog = new TempKatalog();
-        JsonWordStore.OpenOrMigrate(katalog.PlikJson, PakietStartowy, new FakeTimeProvider(Teraz));
+        using var dir = new TempDirectory();
+        new JsonWordStore(dir.JsonFile, Fixtures.Zegar()).ImportLegacyIfEmpty(PakietStartowy);
 
         // Ponowny odczyt z dysku - sprawdza cala droge tam i z powrotem.
-        var poWczytaniu = new JsonWordStore(katalog.PlikJson, new FakeTimeProvider(Teraz)).GetAll();
+        var reloaded = new JsonWordStore(dir.JsonFile, Fixtures.Zegar()).GetAll();
 
-        Assert.Contains(poWczytaniu, s => s.Translation.Contains("domyślnie"));
-        Assert.Contains(poWczytaniu, s => s.Translation.Contains("tłumić"));
+        Assert.Contains(reloaded, w => w.Translation.Contains("domyślnie"));
+        Assert.Contains(reloaded, w => w.Translation.Contains("tłumić"));
     }
 }

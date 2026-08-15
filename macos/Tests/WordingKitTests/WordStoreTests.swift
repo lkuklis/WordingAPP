@@ -3,93 +3,85 @@ import Testing
 
 @testable import WordingKit
 
-/// Izolowany katalog na dane, sprzatany po tescie.
-final class TempKatalog {
-    let katalog: URL
-
-    init() throws {
-        katalog = URL.temporaryDirectory.appending(path: "wording-test-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: katalog, withIntermediateDirectories: true)
-    }
-
-    var plik: URL { katalog.appending(path: "words.json") }
-
-    deinit {
-        try? FileManager.default.removeItem(at: katalog)
-    }
-}
-
 @Suite struct WordStoreTests {
-    static let teraz = Date(timeIntervalSince1970: 1_786_000_000)
+    static let teraz = Fixtures.teraz
 
     @Test func brakPlikuDajePustyMagazyn() throws {
-        let katalog = try TempKatalog()
+        let dir = try TempDirectory()
 
-        let magazyn = try WordStore(fileURL: katalog.plik)
-
-        #expect(magazyn.words.isEmpty)
+        #expect(try WordStore(fileURL: dir.jsonFile).words.isEmpty)
     }
 
     @Test func dodanieZapisujeNaDysk() throws {
-        let katalog = try TempKatalog()
-        _ = try WordStore(fileURL: katalog.plik)
+        let dir = try TempDirectory()
+        try WordStore(fileURL: dir.jsonFile)
             .add(original: "scope", translation: "zakres", now: Self.teraz)
 
-        let poWczytaniu = try WordStore(fileURL: katalog.plik)
+        let reloaded = try WordStore(fileURL: dir.jsonFile)
 
-        #expect(poWczytaniu.words.count == 1)
-        #expect(poWczytaniu.words[0].original == "scope")
-        #expect(poWczytaniu.words[0].translation == "zakres")
+        #expect(reloaded.words.count == 1)
+        #expect(reloaded.words[0].original == "scope")
+        #expect(reloaded.words[0].translation == "zakres")
     }
 
     @Test func dodanieNadajeUnikalneIdentyfikatory() throws {
-        let katalog = try TempKatalog()
-        let magazyn = try WordStore(fileURL: katalog.plik)
+        let dir = try TempDirectory()
+        let store = try WordStore(fileURL: dir.jsonFile)
 
         for i in 0..<50 {
-            _ = try magazyn.add(original: "slowo\(i)", translation: "tlum\(i)", now: Self.teraz)
+            try store.add(original: "slowo\(i)", translation: "tlum\(i)", now: Self.teraz)
         }
 
-        #expect(Set(magazyn.words.map(\.id)).count == 50)
+        #expect(Set(store.words.map(\.id)).count == 50)
+    }
+
+    @Test func dodaneSlowkoJestNoweIWymagalne() throws {
+        let dir = try TempDirectory()
+
+        let word = try WordStore(fileURL: dir.jsonFile)
+            .add(original: "scope", translation: "zakres", now: Self.teraz)
+
+        #expect(word.isNew)
+        #expect(word.isDue(at: Self.teraz))
     }
 
     @Test func usuniecieDzialaIZwracaFalseDlaNieistniejacego() throws {
-        let katalog = try TempKatalog()
-        let magazyn = try WordStore(fileURL: katalog.plik)
-        let slowo = try magazyn.add(original: "scope", translation: "zakres", now: Self.teraz)
+        let dir = try TempDirectory()
+        let store = try WordStore(fileURL: dir.jsonFile)
+        let word = try store.add(original: "scope", translation: "zakres", now: Self.teraz)
 
-        #expect(try magazyn.remove(id: slowo.id) == true)
-        #expect(try magazyn.remove(id: slowo.id) == false)
-        #expect(try WordStore(fileURL: katalog.plik).words.isEmpty)
+        #expect(try store.remove(id: word.id) == true)
+        #expect(try store.remove(id: word.id) == false)
+        #expect(try WordStore(fileURL: dir.jsonFile).words.isEmpty)
     }
 
     @Test func aktualizacjaUtrwalaStanPowtorek() throws {
-        let katalog = try TempKatalog()
-        let magazyn = try WordStore(fileURL: katalog.plik)
-        var slowo = try magazyn.add(original: "scope", translation: "zakres", now: Self.teraz)
+        let dir = try TempDirectory()
+        let store = try WordStore(fileURL: dir.jsonFile)
+        var word = try store.add(original: "scope", translation: "zakres", now: Self.teraz)
 
-        slowo.review = SpacedRepetitionScheduler.apply(slowo.review, grade: .good, now: Self.teraz)
-        #expect(try magazyn.update(slowo) == true)
+        word.review = SpacedRepetitionScheduler.apply(word.review, grade: .good, now: Self.teraz)
+        #expect(try store.update(word) == true)
 
-        let zDysku = try WordStore(fileURL: katalog.plik).word(id: slowo.id)
+        let fromDisk = try WordStore(fileURL: dir.jsonFile).word(id: word.id)
 
-        #expect(zDysku?.review.repetitions == 1)
-        #expect(zDysku?.review.dueUtc == Self.teraz.addingTimeInterval(86_400))
+        #expect(fromDisk?.review.repetitions == 1)
+        #expect(fromDisk?.review.dueUtc == Self.teraz.addingTimeInterval(.day))
     }
 
     @Test func zapisNieZostawiaPlikuTymczasowego() throws {
-        let katalog = try TempKatalog()
-        _ = try WordStore(fileURL: katalog.plik)
+        let dir = try TempDirectory()
+        try WordStore(fileURL: dir.jsonFile)
             .add(original: "scope", translation: "zakres", now: Self.teraz)
 
-        let pliki = try FileManager.default.contentsOfDirectory(atPath: katalog.katalog.path)
+        let files = try FileManager.default.contentsOfDirectory(atPath: dir.path.path)
 
-        #expect(!pliki.contains { $0.hasSuffix(".tmp") })
+        #expect(!files.contains { $0.hasSuffix(".tmp") })
     }
 
     @Test func managerOdrzucaPusteWartosci() throws {
-        let katalog = try TempKatalog()
-        let manager = WordManager(store: try WordStore(fileURL: katalog.plik))
+        let dir = try TempDirectory()
+        let manager = WordManager(store: try WordStore(fileURL: dir.jsonFile))
 
         #expect(throws: WordingError.emptyOriginal) {
             try manager.addWord(original: "   ", translation: "zakres")
@@ -100,29 +92,29 @@ final class TempKatalog {
     }
 
     @Test func managerPrzycinaBialeZnaki() throws {
-        let katalog = try TempKatalog()
-        let manager = WordManager(store: try WordStore(fileURL: katalog.plik))
+        let dir = try TempDirectory()
+        let manager = WordManager(store: try WordStore(fileURL: dir.jsonFile))
 
-        let slowo = try manager.addWord(original: "  scope  ", translation: "\tzakres\n")
+        let word = try manager.addWord(original: "  scope  ", translation: "\tzakres\n")
 
-        #expect(slowo.original == "scope")
-        #expect(slowo.translation == "zakres")
+        #expect(word.original == "scope")
+        #expect(word.translation == "zakres")
     }
 
     @Test func ocenaPrzeliczaTerminIZapisujeGoNaDysk() throws {
-        let katalog = try TempKatalog()
-        let manager = WordManager(store: try WordStore(fileURL: katalog.plik))
-        let slowo = try manager.addWord(original: "scope", translation: "zakres", now: Self.teraz)
+        let dir = try TempDirectory()
+        let manager = WordManager(store: try WordStore(fileURL: dir.jsonFile))
+        let word = try manager.addWord(original: "scope", translation: "zakres", now: Self.teraz)
 
-        #expect(try manager.grade(id: slowo.id, grade: .good, now: Self.teraz) == true)
+        #expect(try manager.grade(id: word.id, grade: .good, now: Self.teraz) == true)
 
-        let zDysku = try WordStore(fileURL: katalog.plik).word(id: slowo.id)
-        #expect(zDysku?.review.repetitions == 1)
+        let fromDisk = try WordStore(fileURL: dir.jsonFile).word(id: word.id)
+        #expect(fromDisk?.review.repetitions == 1)
     }
 
     @Test func ocenaNieistniejacegoSlowkaZwracaFalse() throws {
-        let katalog = try TempKatalog()
-        let manager = WordManager(store: try WordStore(fileURL: katalog.plik))
+        let dir = try TempDirectory()
+        let manager = WordManager(store: try WordStore(fileURL: dir.jsonFile))
 
         #expect(try manager.grade(id: UUID(), grade: .good) == false)
     }

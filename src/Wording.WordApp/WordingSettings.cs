@@ -4,12 +4,8 @@ using Wording.Core.Storage;
 namespace Wording.WordApp;
 
 /// <summary>
-/// Ustawienia aplikacji z appsettings.json.
-/// <para>
-/// Wczesniej siedzialy w App.config i czytal je bezposrednio Wording.Core, przez co
-/// biblioteka logiki byla zwiazana z konfiguracja procesu. Teraz konfiguracje czyta
-/// wylacznie warstwa aplikacji i przekazuje gotowe wartosci w dol.
-/// </para>
+/// Ustawienia aplikacji z appsettings.json. Konfiguracje czyta wylacznie warstwa
+/// aplikacji - Wording.Core dostaje gotowe wartosci.
 /// </summary>
 public sealed class WordingSettings
 {
@@ -26,15 +22,19 @@ public sealed class WordingSettings
 
     public static WordingSettings Load()
     {
-        var konfiguracja = new ConfigurationBuilder()
+        var configuration = new ConfigurationBuilder()
             .SetBasePath(AppContext.BaseDirectory)
             .AddJsonFile("appsettings.json", optional: true)
             .Build();
 
-        var ustawienia = new WordingSettings();
-        konfiguracja.GetSection(SectionName).Bind(ustawienia);
+        var settings = new WordingSettings();
+        configuration.GetSection(SectionName).Bind(settings);
 
-        return ustawienia.Sanitized();
+        // Chroni przed zerowym albo ujemnym interwalem w recznie edytowanym pliku.
+        settings.ChangeTimeSeconds = Math.Max(1, settings.ChangeTimeSeconds);
+        settings.ShowTimeSeconds = Math.Max(1, settings.ShowTimeSeconds);
+
+        return settings;
     }
 
     /// <summary>Docelowa sciezka pliku ze slowkami.</summary>
@@ -42,27 +42,17 @@ public sealed class WordingSettings
         string.IsNullOrWhiteSpace(DataFile) ? WordingPaths.DataFile() : DataFile;
 
     /// <summary>
-    /// Plik w starym formacie XML, o ile w ogole istnieje. Szukamy obok pliku exe
-    /// (tam trafia pakiet startowy) oraz w katalogu roboczym, gdzie trzymala go
-    /// poprzednia wersja aplikacji.
+    /// Plik w starym formacie XML, o ile istnieje. Szukamy obok pliku exe (tam trafia
+    /// pakiet startowy) oraz w katalogu roboczym, gdzie trzymala go stara wersja.
     /// </summary>
     public static string? FindLegacyXml()
     {
-        string[] kandydaci =
+        string[] candidates =
         [
             Path.Combine(AppContext.BaseDirectory, WordingPaths.LegacyDataFileName),
             Path.Combine(Directory.GetCurrentDirectory(), WordingPaths.LegacyDataFileName),
         ];
 
-        return Array.Find(kandydaci, File.Exists);
-    }
-
-    /// <summary>Chroni przed zerowym albo ujemnym interwalem w recznie edytowanym pliku.</summary>
-    WordingSettings Sanitized()
-    {
-        ChangeTimeSeconds = Math.Max(1, ChangeTimeSeconds);
-        ShowTimeSeconds = Math.Max(1, ShowTimeSeconds);
-
-        return this;
+        return Array.Find(candidates, File.Exists);
     }
 }

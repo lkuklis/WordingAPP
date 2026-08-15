@@ -10,7 +10,7 @@ namespace Wording.Core.Storage;
 /// zapisu nie zostawilo uciętego pliku z danymi uzytkownika.
 /// </para>
 /// </summary>
-public sealed class JsonWordStore : IWordStore
+public sealed class JsonWordStore
 {
     internal const int CurrentVersion = 1;
 
@@ -28,32 +28,7 @@ public sealed class JsonWordStore : IWordStore
         Reload();
     }
 
-    /// <summary>Sciezka pliku, z ktorego korzysta ten magazyn.</summary>
-    public string Path => _path;
-
-    /// <summary>
-    /// Otwiera magazyn, a gdy pliku JSON jeszcze nie ma i wskazano istniejacy plik
-    /// w starym formacie XML - przenosi z niego slowka i od razu zapisuje.
-    /// </summary>
-    public static JsonWordStore OpenOrMigrate(string jsonPath, string? legacyXmlPath, TimeProvider? clock = null)
-    {
-        var zegar = clock ?? TimeProvider.System;
-        var magazyn = new JsonWordStore(jsonPath, zegar);
-
-        var trzebaMigrowac = magazyn._words.Count == 0
-            && !File.Exists(jsonPath)
-            && legacyXmlPath is not null
-            && File.Exists(legacyXmlPath);
-
-        if (trzebaMigrowac)
-        {
-            magazyn._words = [.. LegacyXmlImporter.Read(legacyXmlPath!, zegar.GetUtcNow())];
-            magazyn.Save();
-        }
-
-        return magazyn;
-    }
-
+    /// <summary>Wczytuje ponownie z dysku, odrzucajac stan z pamieci.</summary>
     public void Reload()
     {
         if (!File.Exists(_path))
@@ -70,8 +45,25 @@ public sealed class JsonWordStore : IWordStore
             return;
         }
 
-        var plik = JsonSerializer.Deserialize(json, WordJsonContext.Default.WordFile);
-        _words = plik?.Words ?? [];
+        _words = JsonSerializer.Deserialize(json, WordJsonContext.Default.WordFile)?.Words ?? [];
+    }
+
+    /// <summary>
+    /// Przenosi slowka ze starego formatu XML, ale wylacznie do pustego magazynu -
+    /// nigdy nie nadpisuje danych, ktore juz sa.
+    /// </summary>
+    /// <returns>Liczba przeniesionych slowek.</returns>
+    public int ImportLegacyIfEmpty(string? legacyXmlPath)
+    {
+        if (_words.Count > 0 || legacyXmlPath is null || !File.Exists(legacyXmlPath))
+        {
+            return 0;
+        }
+
+        _words = [.. LegacyXmlImporter.Read(legacyXmlPath, _clock.GetUtcNow())];
+        Save();
+
+        return _words.Count;
     }
 
     public IReadOnlyList<Word> GetAll() => _words;
@@ -83,26 +75,24 @@ public sealed class JsonWordStore : IWordStore
         ArgumentNullException.ThrowIfNull(original);
         ArgumentNullException.ThrowIfNull(translation);
 
-        var teraz = _clock.GetUtcNow();
-        var slowo = new Word
+        var now = _clock.GetUtcNow();
+        var word = new Word
         {
             Original = original,
             Translation = translation,
-            CreatedUtc = teraz,
-            Review = ReviewState.New(teraz),
+            CreatedUtc = now,
+            Review = ReviewState.New(now),
         };
 
-        _words.Add(slowo);
+        _words.Add(word);
         Save();
 
-        return slowo;
+        return word;
     }
 
     public bool Remove(Guid id)
     {
-        var usuniete = _words.RemoveAll(word => word.Id == id);
-
-        if (usuniete == 0)
+        if (_words.RemoveAll(word => word.Id == id) == 0)
         {
             return false;
         }
@@ -111,11 +101,12 @@ public sealed class JsonWordStore : IWordStore
         return true;
     }
 
+    /// <summary>Zapisuje zmiany w slowku juz obecnym w magazynie (np. po ocenie powtorki).</summary>
     public bool Update(Word word)
     {
         ArgumentNullException.ThrowIfNull(word);
 
-        var index = _words.FindIndex(istniejace => istniejace.Id == word.Id);
+        var index = _words.FindIndex(existing => existing.Id == word.Id);
 
         if (index < 0)
         {
@@ -130,21 +121,21 @@ public sealed class JsonWordStore : IWordStore
 
     void Save()
     {
-        var katalog = System.IO.Path.GetDirectoryName(_path);
+        var directory = Path.GetDirectoryName(_path);
 
-        if (!string.IsNullOrEmpty(katalog))
+        if (!string.IsNullOrEmpty(directory))
         {
-            Directory.CreateDirectory(katalog);
+            Directory.CreateDirectory(directory);
         }
 
         var json = JsonSerializer.Serialize(
-            new WordFile { Version = CurrentVersion, Words = _words },
+            new WordFile { Words = _words },
             WordJsonContext.Default.WordFile);
 
         // Zapis do pliku obok, potem podmiana - dzieki temu w razie awarii
         // w trakcie zapisu oryginal zostaje nietkniety.
-        var tymczasowy = _path + ".tmp";
-        File.WriteAllText(tymczasowy, json);
-        File.Move(tymczasowy, _path, overwrite: true);
+        var temporary = _path + ".tmp";
+        File.WriteAllText(temporary, json);
+        File.Move(temporary, _path, overwrite: true);
     }
 }

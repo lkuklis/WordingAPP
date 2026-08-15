@@ -15,8 +15,6 @@ public enum SpacedRepetitionScheduler {
     /// zablokowaloby cala rotacje, bo byloby stale najbardziej przeterminowane.
     static let relearnDelay: TimeInterval = 10 * 60
 
-    static let secondsPerDay: TimeInterval = 24 * 60 * 60
-
     public static func apply(_ current: ReviewState, grade: ReviewGrade, now: Date) -> ReviewState {
         let quality = grade.rawValue
         let easeFactor = nextEaseFactor(current.easeFactor, quality: quality)
@@ -45,7 +43,7 @@ public enum SpacedRepetitionScheduler {
             repetitions: repetitions,
             intervalDays: interval,
             easeFactor: easeFactor,
-            dueUtc: now.addingTimeInterval(interval * secondsPerDay),
+            dueUtc: now.addingTimeInterval(interval * .day),
             lastReviewedUtc: now,
             lapses: current.lapses
         )

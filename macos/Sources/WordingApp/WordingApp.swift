@@ -28,18 +28,16 @@ struct MenuContent: View {
         if let word = model.lastShown {
             Text("\(word.original) — \(word.translation)")
 
-            Button("I know it") { model.gradeLastShown(as: .good) }
-            Button("Hard") { model.gradeLastShown(as: .hard) }
-            Button("Don't know") { model.gradeLastShown(as: .again) }
+            ForEach(ReviewGrade.ordered, id: \.self) { grade in
+                Button(grade.buttonTitle) { model.gradeLastShown(as: grade) }
+            }
         } else {
             Text("No word shown yet")
         }
 
         Divider()
 
-        Button(model.isPaused ? "Resume" : "Pause") {
-            model.isPaused.toggle()
-        }
+        Button(model.isPaused ? "Resume" : "Pause") { model.isPaused.toggle() }
 
         Menu("Interval") {
             ForEach(AppModel.intervalOptions, id: \.label) { option in

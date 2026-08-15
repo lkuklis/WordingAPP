@@ -61,7 +61,7 @@
             this.Controls.Add(this.dataGridWords);
             this.Name = "WordingMain";
             this.Text = "Wording App";
-            this.Resize += new System.EventHandler(this.Form1_Resize);
+            this.Resize += new System.EventHandler(this.HideOnMinimize);
             ((System.ComponentModel.ISupportInitialize)(this.dataGridWords)).EndInit();
             this.ResumeLayout(false);
 

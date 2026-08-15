@@ -1,8 +1,14 @@
 import Foundation
 
+extension TimeInterval {
+    /// Doba w sekundach. Wspolna dla schedulera i selektora, zeby zaden z nich
+    /// nie musial siegac po detal konwersji do sasiedniego typu.
+    public static let day: TimeInterval = 24 * 60 * 60
+}
+
 /// Ocena, jaka uzytkownik wystawia sobie po zobaczeniu slowka.
 /// Wartosci odpowiadaja skali jakosci SM-2 (0-5), tak samo jak w wersji .NET.
-public enum ReviewGrade: Int, Sendable, CaseIterable {
+public enum ReviewGrade: Int, Sendable {
     /// Nie pamietam - powtorki startuja od nowa.
     case again = 0
     /// Z trudem, ale trafione.

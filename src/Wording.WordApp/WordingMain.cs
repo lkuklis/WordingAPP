@@ -9,17 +9,22 @@ namespace Wording.WordApp;
 
 public partial class WordingMain : Form
 {
+    /// <summary>Etykiety ocen w jednym miejscu - menu buduje sie z tej tablicy.</summary>
+    static readonly (string Label, ReviewGrade Grade)[] Grades =
+    [
+        ("I know it", ReviewGrade.Good),
+        ("Hard", ReviewGrade.Hard),
+        ("Don't know", ReviewGrade.Again),
+    ];
+
     readonly WordManager _manager;
     readonly NotifyIcon _notifyIcon;
     readonly System.Windows.Forms.Timer _timer;
     readonly int _showTimeMs;
-
-    readonly ToolStripMenuItem _oceanZnam;
-    readonly ToolStripMenuItem _ocenTrudne;
-    readonly ToolStripMenuItem _ocenNieZnam;
+    readonly ToolStripMenuItem[] _gradeItems;
 
     /// <summary>Ostatnio pokazane slowko - to jego dotycza oceny z menu w zasobniku.</summary>
-    Word? _ostatnioPokazane;
+    Word? _lastShown;
 
     public WordingMain(WordManager manager, WordingSettings settings)
     {
@@ -29,24 +34,20 @@ public partial class WordingMain : Form
         InitializeComponent();
 
         _manager = manager;
-
-        // Poprzednia wersja liczyla czas wyswietlania powiadomienia z klucza
-        // changeTime, przez co showTime z konfiguracji nie robil zupelnie nic.
         _showTimeMs = settings.ShowTimeSeconds * 1000;
 
-        _oceanZnam = new ToolStripMenuItem("I know it", null, (_, _) => Ocen(ReviewGrade.Good));
-        _ocenTrudne = new ToolStripMenuItem("Hard", null, (_, _) => Ocen(ReviewGrade.Hard));
-        _ocenNieZnam = new ToolStripMenuItem("Don't know", null, (_, _) => Ocen(ReviewGrade.Again));
+        _gradeItems = [.. Grades.Select(grade =>
+            new ToolStripMenuItem(grade.Label, null, (_, _) => Grade(grade.Grade)))];
 
         _notifyIcon = new NotifyIcon
         {
             Icon = Resources.Icon1,
             Text = "Wording",
             Visible = true,
-            ContextMenuStrip = ZbudujMenuZasobnika(),
+            ContextMenuStrip = BuildTrayMenu(),
         };
         _notifyIcon.MouseClick += NotifyIconMouseClick;
-        _notifyIcon.BalloonTipClicked += (_, _) => PokazOkno();
+        _notifyIcon.BalloonTipClicked += (_, _) => ShowWindow();
 
         _timer = new System.Windows.Forms.Timer { Interval = settings.ChangeTimeSeconds * 1000 };
         _timer.Tick += ShowWordTick;
@@ -60,90 +61,82 @@ public partial class WordingMain : Form
             _timer.Dispose();
         };
 
-        OdswiezSiatke();
+        RefreshGrid();
     }
 
-    ContextMenuStrip ZbudujMenuZasobnika()
+    ContextMenuStrip BuildTrayMenu()
     {
         var menu = new ContextMenuStrip();
 
-        menu.Items.Add(_oceanZnam);
-        menu.Items.Add(_ocenTrudne);
-        menu.Items.Add(_ocenNieZnam);
+        menu.Items.AddRange(_gradeItems);
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add(new ToolStripMenuItem("Show window", null, (_, _) => PokazOkno()));
-        // Poprzednia wersja nie miala jak sie zamknac - okno tylko chowalo sie do
-        // zasobnika, a proces trzeba bylo ubijac recznie.
+        menu.Items.Add(new ToolStripMenuItem("Show window", null, (_, _) => ShowWindow()));
         menu.Items.Add(new ToolStripMenuItem("Exit", null, (_, _) => Application.Exit()));
 
-        menu.Opening += (_, _) => UstawDostepnoscOcen();
+        menu.Opening += (_, _) => UpdateGradeItems();
 
         return menu;
     }
 
-    void UstawDostepnoscOcen()
+    void UpdateGradeItems()
     {
-        var mozna = _ostatnioPokazane is not null;
+        var suffix = _lastShown is null ? string.Empty : $" — {_lastShown.Original}";
 
-        _oceanZnam.Enabled = mozna;
-        _ocenTrudne.Enabled = mozna;
-        _ocenNieZnam.Enabled = mozna;
-
-        var opis = _ostatnioPokazane is null ? string.Empty : $" — {_ostatnioPokazane.Original}";
-        _oceanZnam.Text = "I know it" + opis;
-        _ocenTrudne.Text = "Hard" + opis;
-        _ocenNieZnam.Text = "Don't know" + opis;
+        for (var i = 0; i < _gradeItems.Length; i++)
+        {
+            _gradeItems[i].Enabled = _lastShown is not null;
+            _gradeItems[i].Text = Grades[i].Label + suffix;
+        }
     }
 
-    void Ocen(ReviewGrade ocena)
+    void Grade(ReviewGrade grade)
     {
-        if (_ostatnioPokazane is null)
+        if (_lastShown is null)
         {
             return;
         }
 
-        _manager.Grade(_ostatnioPokazane.Id, ocena);
-        _ostatnioPokazane = null;
+        _manager.Grade(_lastShown.Id, grade);
+        _lastShown = null;
 
-        OdswiezSiatke();
+        RefreshGrid();
     }
 
-    void OdswiezSiatke()
+    void RefreshGrid()
     {
-        var teraz = DateTimeOffset.UtcNow;
-        var wiersze = _manager.GetWords()
-            .OrderBy(word => word.Review.DueUtc)
-            .Select(word => new WordRow(word, teraz))
-            .ToList();
+        var now = DateTimeOffset.UtcNow;
 
         dataGridWords.AutoGenerateColumns = true;
-        dataGridWords.DataSource = new BindingSource { DataSource = wiersze };
+        dataGridWords.DataSource = _manager.GetWords()
+            .OrderBy(word => word.Review.DueUtc)
+            .Select(word => new WordRow(word, now))
+            .ToList();
 
-        // Edycja w siatce nigdy nie byla zapisywana na dysk, wiec zamiast
-        // udawac, ze dziala, siatka jest do odczytu. Usuwanie wierszy dziala.
+        // Edycja komorek nigdy nie byla zapisywana, wiec siatka jest do odczytu.
+        // Usuwanie wierszy dziala.
         dataGridWords.ReadOnly = true;
 
-        if (dataGridWords.Columns[nameof(WordRow.Id)] is { } kolumnaId)
+        if (dataGridWords.Columns[nameof(WordRow.Id)] is { } idColumn)
         {
-            kolumnaId.Visible = false;
+            idColumn.Visible = false;
         }
 
-        if (dataGridWords.Columns[nameof(WordRow.NextReview)] is { } kolumnaTerminu)
+        if (dataGridWords.Columns[nameof(WordRow.NextReview)] is { } dueColumn)
         {
-            kolumnaTerminu.HeaderText = "Next review";
+            dueColumn.HeaderText = "Next review";
         }
 
         dataGridWords.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.DisplayedCellsExceptHeaders;
     }
 
-    void PokazOkno()
+    void ShowWindow()
     {
         Show();
         WindowState = FormWindowState.Normal;
         Activate();
     }
 
-    void Form1_Resize(object sender, EventArgs e)
+    void HideOnMinimize(object sender, EventArgs e)
     {
         if (WindowState == FormWindowState.Minimized)
         {
@@ -156,41 +149,39 @@ public partial class WordingMain : Form
         // Prawy przycisk obsluguje menu kontekstowe, wiec reagujemy tylko na lewy.
         if (e.Button == MouseButtons.Left)
         {
-            PokazOkno();
+            ShowWindow();
         }
     }
 
     void ShowWordTick(object? sender, EventArgs e)
     {
-        var slowo = _manager.NextWordToShow();
+        var word = _manager.NextWordToShow();
 
-        // Pusta lista konczyla sie wczesniej wyjatkiem przy kazdym tyknieciu zegara.
-        if (slowo is null)
+        if (word is null)
         {
             return;
         }
 
-        _ostatnioPokazane = slowo;
-        _notifyIcon.ShowBalloonTip(_showTimeMs, slowo.Original, slowo.Translation, ToolTipIcon.Info);
+        _lastShown = word;
+        _notifyIcon.ShowBalloonTip(_showTimeMs, word.Original, word.Translation, ToolTipIcon.Info);
     }
 
     void btnAddNewWord_Click(object sender, EventArgs e)
     {
-        // Dialog dostaje ten sam manager, wiec nowe slowko widac od razu,
-        // bez ponownego czytania pliku z dysku.
-        using var okienko = new NewWord(_manager);
+        // Dialog dostaje ten sam manager, wiec nowe slowko widac od razu.
+        using var dialog = new NewWord(_manager);
 
-        if (okienko.ShowDialog(this) == DialogResult.OK)
+        if (dialog.ShowDialog(this) == DialogResult.OK)
         {
-            OdswiezSiatke();
+            RefreshGrid();
         }
     }
 
     void dataGridWords_RowsRemoved(object sender, DataGridViewRowCancelEventArgs e)
     {
-        if (e.Row?.DataBoundItem is WordRow wiersz)
+        if (e.Row?.DataBoundItem is WordRow row)
         {
-            _manager.RemoveWord(wiersz.Id);
+            _manager.RemoveWord(row.Id);
         }
     }
 }

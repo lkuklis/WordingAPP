@@ -1,11 +1,11 @@
+using System;
 using Wording.Core;
 
 namespace Wording.WordApp;
 
 /// <summary>
-/// Wiersz listy slowek, wspolny dla powloki WinForms i Avalonii.
-/// Osobny typ, bo <see cref="Word"/> niesie zagniezdzony stan powtorek,
-/// ktorego zadna z siatek nie pokaze sensownie sama z siebie.
+/// Wiersz siatki. Osobny typ, bo <see cref="Word"/> niesie zagniezdzony stan
+/// powtorek, ktorego DataGridView nie pokaze sam z siebie.
 /// </summary>
 public sealed class WordRow
 {
@@ -16,7 +16,7 @@ public sealed class WordRow
         Translation = word.Translation;
         Reviews = word.Review.Repetitions;
         Lapses = word.Review.Lapses;
-        NextReview = OpiszTermin(word, now);
+        NextReview = DescribeDue(word, now);
     }
 
     public Guid Id { get; }
@@ -31,30 +31,30 @@ public sealed class WordRow
 
     public string NextReview { get; }
 
-    static string OpiszTermin(Word word, DateTimeOffset now)
+    static string DescribeDue(Word word, DateTimeOffset now)
     {
-        if (word.Review.LastReviewedUtc is null)
+        if (word.IsNew)
         {
             return "new";
         }
 
-        var doTerminu = word.Review.DueUtc - now;
-
-        if (doTerminu <= TimeSpan.Zero)
+        if (word.IsDue(now))
         {
             return "due";
         }
 
-        if (doTerminu < TimeSpan.FromHours(1))
+        var remaining = word.Review.DueUtc - now;
+
+        if (remaining < TimeSpan.FromHours(1))
         {
-            return $"in {Math.Max(1, (int)doTerminu.TotalMinutes)} min";
+            return $"in {Math.Max(1, (int)remaining.TotalMinutes)} min";
         }
 
-        if (doTerminu < TimeSpan.FromDays(1))
+        if (remaining < TimeSpan.FromDays(1))
         {
-            return $"in {(int)doTerminu.TotalHours} h";
+            return $"in {(int)remaining.TotalHours} h";
         }
 
-        return $"in {(int)doTerminu.TotalDays} d";
+        return $"in {(int)remaining.TotalDays} d";
     }
 }

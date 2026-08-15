@@ -7,46 +7,20 @@ import WordingKit
 /// W odroznieniu od osascript i terminal-notifier ta droga daje przyciski akcji,
 /// czyli ocene powtorki wprost z powiadomienia - bez otwierania menu.
 ///
-/// WYMAGA zapakowanej aplikacji: UNUserNotificationCenter.current() przewraca sie
+/// WYMAGA zapakowanej aplikacji: `UNUserNotificationCenter.current()` przewraca sie
 /// w golym pliku wykonywalnym, bo nie ma identyfikatora pakietu. Dlatego aplikacje
-/// uruchamia sie przez Wording.app, a nie przez `swift run`.
-/// Poza klasa i poza izolacja MainActor, bo odczytuje to delegat powiadomien,
-/// ktorego metody sa nieizolowane.
-enum NotificationAction: String, CaseIterable, Sendable {
-    case good = "wording.grade.good"
-    case hard = "wording.grade.hard"
-    case again = "wording.grade.again"
-
-    var title: String {
-        switch self {
-        case .good: "I know it"
-        case .hard: "Hard"
-        case .again: "Don't know"
-        }
-    }
-
-    var grade: ReviewGrade {
-        switch self {
-        case .good: .good
-        case .hard: .hard
-        case .again: .again
-        }
-    }
-}
-
+/// uruchamia sie przez Wording.app (build-app.sh), a nie przez `swift run`.
 @MainActor
 final class NotificationService {
     nonisolated static let categoryIdentifier = "wording.word"
     nonisolated static let wordIdKey = "wordId"
 
-    private(set) var authorizationDenied = false
-
     /// Rejestruje kategorie z przyciskami i prosi o zgode.
     func prepare() async {
         let center = UNUserNotificationCenter.current()
 
-        let actions = NotificationAction.allCases.map {
-            UNNotificationAction(identifier: $0.rawValue, title: $0.title, options: [])
+        let actions = ReviewGrade.ordered.map {
+            UNNotificationAction(identifier: $0.actionIdentifier, title: $0.buttonTitle, options: [])
         }
 
         center.setNotificationCategories([
@@ -58,12 +32,7 @@ final class NotificationService {
             )
         ])
 
-        do {
-            let granted = try await center.requestAuthorization(options: [.alert, .sound])
-            authorizationDenied = !granted
-        } catch {
-            authorizationDenied = true
-        }
+        _ = try? await center.requestAuthorization(options: [.alert, .sound])
     }
 
     func show(word: Word) {
@@ -84,7 +53,7 @@ final class NotificationService {
     }
 
     /// Stan zgody, zeby aplikacja mogla powiedziec wprost, ze system ja blokuje,
-    /// zamiast po cichu nic nie pokazywac - na tym potknelismy sie z osascript.
+    /// zamiast po cichu nic nie pokazywac.
     func authorizationStatus() async -> UNAuthorizationStatus {
         await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
     }

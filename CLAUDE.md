@@ -26,13 +26,15 @@ This is deliberate. Notification APIs are the least abstractable part of the pla
 
 - `Wording.slnx` — .NET solution in the `.slnx` XML format (the .NET 10 SDK default). `dotnet new sln --format sln` regenerates a classic `.sln` if an older Visual Studio can't open it.
 - `src/Wording.Core/` — `net10.0`, **deliberately not `-windows`**. All .NET logic: `Learning/` (SM-2, weighted selector), `Storage/` (JSON store, legacy XML importer, paths). Knows nothing about configuration or UI, so it builds and tests on macOS.
-- `src/Wording.WordApp/` — `net10.0-windows` WinForms app plus its composition root (`WordingHost`), settings, and list projection. `EnableWindowsTargeting` lets it compile on non-Windows hosts.
+- `src/Wording.WordApp/` — `net10.0-windows` WinForms app, its settings, and the list projection. `Program.Main` is the composition root. `EnableWindowsTargeting` lets it compile on non-Windows hosts.
 - `tests/Wording.Core.Tests/` — xUnit, 49 tests, runs on macOS.
 - `macos/` — SwiftPM package. `WordingKit` (logic port + starter pack) and `WordingApp` (SwiftUI). 41 tests.
 
 ## Architecture
 
-**One store per process.** `WordingHost.Create()` / `AppModel.start()` open one store and hand the same manager to every screen. Pre-migration each .NET screen constructed its own repository, so the add dialog wrote through a different in-memory copy than the main window.
+**One store per process.** `Program.Main` / `AppModel.start()` open one store and hand the same manager to every screen. Pre-migration each .NET screen constructed its own repository, so the add dialog wrote through a different in-memory copy than the main window. Both composition roots are four lines and deliberately have no wrapper type — the store is concrete (`JsonWordStore` / `WordStore`), because a one-implementation interface bought nothing and no test ever substituted it.
+
+**Seeding and migration are triggered from the composition root, not the store constructor.** `JsonWordStore.ImportLegacyIfEmpty` and `WordStore.seedIfEmpty` both refuse to touch a non-empty store, so neither can overwrite review state written by the other app.
 
 **Selection is weighted, not gated.** `WordSelector` does *not* filter to words whose `dueUtc` has passed, which is what a conventional SRS would do. This app shows a word every few minutes rather than in review sessions, so due-date gating would leave it with nothing to display. Every word gets a weight — new words highest, overdue ones scaling with lateness (capped at 30 days so one forgotten word can't dominate), and a small non-zero floor so nothing leaves rotation. Measured: words graded known take ~0.2% of impressions but still appear. Tune the constants rather than adding filtering. Both ports implement this identically.
 
@@ -48,11 +50,12 @@ This is deliberate. Notification APIs are the least abstractable part of the pla
 
 **The app must run from `Wording.app`, not `swift run`.** `UNUserNotificationCenter.current()` traps in a bare executable because there is no bundle identifier. `macos/build-app.sh` assembles the bundle, writes `Info.plist` (`com.lkuklis.wording`, `LSUIElement` so there is no Dock icon), and ad-hoc signs it — the signature is what keeps notification permission stable across launches.
 
-**Two serialization traps the interop tests exist to catch**, both of which silently corrupt the shared file:
-- Swift encodes `UUID` uppercase, System.Text.Json writes lowercase. Without the manual `encode`, the first macOS save rewrites every id in the file.
+**Three serialization traps the interop tests exist to catch**, all of which silently corrupt the shared file:
+- Swift encodes `UUID` uppercase, System.Text.Json writes lowercase. Without the manual `encode`, the first macOS save rewrites every id in the file. (Only the encoder is hand-written; the synthesized decoder is fine because `UUID(uuidString:)` is case-insensitive.)
 - .NET writes six fractional-second digits (`22:18:18.405614+00:00`); Swift's `.iso8601` strategy rejects fractional seconds outright, so `WordingJSON` uses a custom strategy with a non-fractional fallback.
+- **`Date.ISO8601FormatStyle` cannot replace `ISO8601DateFormatter` here**, however tempting its `Sendable` conformance is. It *truncates* the fraction to milliseconds instead of rounding, and combined with binary floating point the round trip does not converge: `.405614` → `.405` → `.404` → `.404`. Every save would walk timestamps backwards. `ISO8601DateFormatter` rounds correctly. `InteropTests.pelnaRundaTamIzPowrotemNieGubiDanych` catches this.
 
-Formatters and coders in `WordingJSON` are computed properties, not shared statics: neither `JSONEncoder` nor `ISO8601DateFormatter` is `Sendable`, and the package builds in Swift 6 language mode with no concurrency escapes.
+`WordingJSON` therefore builds a fresh `ISO8601DateFormatter` inside each coding closure rather than sharing one: the strategies are `@Sendable` and the formatter is not. That costs roughly 14 ms per whole-file save, which is imperceptible at this size and avoids a `nonisolated(unsafe)` escape. The package builds in Swift 6 language mode with no concurrency escapes at all.
 
 ## Data
 
@@ -111,6 +114,6 @@ Two mistakes were made and cost real time; both were "the process started" being
 
 ## Conventions
 
-- Code comments, test names, and commit messages are in Polish; user-facing UI strings are in English, matching the original application.
+- Comments, test method names, and commit messages are in Polish. **Identifiers are English** — types, methods, parameters, and local variables alike, so the two ports read alike line for line. User-facing UI strings are English too, matching the original application; keep them out of `Wording.Core`/`WordingKit`, which raise typed errors and let the UI choose the wording.
 - `TreatWarningsAsErrors` is on in `Wording.Core`. Both stacks currently build with zero warnings — keep it that way.
 - `InternalsVisibleTo` exposes `WordSelector.Weight` and its constants to the .NET test project; keep implementation details internal rather than widening the public API for tests.

@@ -13,7 +13,7 @@ struct WordListView: View {
             HStack {
                 TextField("Word", text: $original)
                 TextField("Translation", text: $translation)
-                Button("Add", action: dodaj)
+                Button("Add", action: add)
                     .disabled(original.trimmed.isEmpty || translation.trimmed.isEmpty)
             }
 
@@ -24,18 +24,21 @@ struct WordListView: View {
                     .width(70)
                 TableColumn("Lapses") { Text("\($0.review.lapses)") }
                     .width(70)
-                TableColumn("Next review") { Text(opisTerminu(for: $0)) }
+                TableColumn("Next review") { Text(describeDue($0)) }
                     .width(110)
             }
 
             HStack {
                 Text("Selected:").foregroundStyle(.secondary)
-                Button("I know it") { ocen(.good) }
-                Button("Hard") { ocen(.hard) }
-                Button("Don't know") { ocen(.again) }
+
+                ForEach(ReviewGrade.ordered, id: \.self) { grade in
+                    Button(grade.buttonTitle) { self.grade(grade) }
+                }
+
                 Button("Delete", role: .destructive) {
                     if let selection { model.remove(id: selection) }
                 }
+
                 Spacer()
             }
             .disabled(selection == nil)
@@ -58,28 +61,30 @@ struct WordListView: View {
         .task { model.refresh() }
     }
 
-    private func dodaj() {
+    private func add() {
         guard model.addWord(original: original, translation: translation) else { return }
 
         original = ""
         translation = ""
     }
 
-    private func ocen(_ grade: ReviewGrade) {
+    private func grade(_ grade: ReviewGrade) {
         guard let selection else { return }
         model.grade(id: selection, as: grade)
     }
 
-    private func opisTerminu(for word: Word) -> String {
-        guard word.review.lastReviewedUtc != nil else { return "new" }
+    private func describeDue(_ word: Word) -> String {
+        let now = Date()
 
-        let doTerminu = word.review.dueUtc.timeIntervalSinceNow
+        guard !word.isNew else { return "new" }
+        guard !word.isDue(at: now) else { return "due" }
 
-        if doTerminu <= 0 { return "due" }
-        if doTerminu < 3600 { return "in \(max(1, Int(doTerminu / 60))) min" }
-        if doTerminu < 86_400 { return "in \(Int(doTerminu / 3600)) h" }
+        let remaining = word.review.dueUtc.timeIntervalSince(now)
 
-        return "in \(Int(doTerminu / 86_400)) d"
+        if remaining < 3600 { return "in \(max(1, Int(remaining / 60))) min" }
+        if remaining < .day { return "in \(Int(remaining / 3600)) h" }
+
+        return "in \(Int(remaining / .day)) d"
     }
 }
 

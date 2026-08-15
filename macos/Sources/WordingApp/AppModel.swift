@@ -1,6 +1,5 @@
 import Foundation
 import Observation
-import UserNotifications
 import WordingKit
 
 @MainActor
@@ -10,8 +9,7 @@ final class AppModel {
     /// powiadomien obslugujacy klikniecia w przyciski oceny.
     static let shared = AppModel()
 
-    /// Dostepne odstepy miedzy slowkami. Poprzednia wersja miala na sztywno
-    /// 5 sekund i potrafila walic powiadomieniami przez cala noc.
+    /// Dostepne odstepy miedzy slowkami.
     static let intervalOptions: [(label: String, seconds: TimeInterval)] = [
         ("5 seconds", 5),
         ("30 seconds", 30),
@@ -19,6 +17,11 @@ final class AppModel {
         ("10 minutes", 600),
         ("1 hour", 3600),
     ]
+
+    private enum Keys {
+        static let paused = "isPaused"
+        static let interval = "intervalSeconds"
+    }
 
     private let notifications = NotificationService()
     private var timer: Timer?
@@ -28,38 +31,35 @@ final class AppModel {
     var lastShown: Word?
     var statusMessage = ""
 
-    var isPaused = false {
+    // Wartosci startowe czytamy w inicjalizatorze wlasciwosci, gdzie didSet
+    // jeszcze nie dziala - inaczej start aplikacji zapisywalby do UserDefaults
+    // to, co przed chwila z niego wyjal, i trzykrotnie budowal timer.
+    var isPaused = UserDefaults.standard.bool(forKey: Keys.paused) {
         didSet {
-            UserDefaults.standard.set(isPaused, forKey: "isPaused")
+            UserDefaults.standard.set(isPaused, forKey: Keys.paused)
             restartTimer()
         }
     }
 
-    var intervalSeconds: TimeInterval = 30 {
+    var intervalSeconds = UserDefaults.standard.object(forKey: Keys.interval) as? TimeInterval ?? 30 {
         didSet {
-            UserDefaults.standard.set(intervalSeconds, forKey: "intervalSeconds")
+            UserDefaults.standard.set(intervalSeconds, forKey: Keys.interval)
             restartTimer()
         }
     }
 
     func start() async {
-        isPaused = UserDefaults.standard.bool(forKey: "isPaused")
-
-        let saved = UserDefaults.standard.double(forKey: "intervalSeconds")
-        if saved > 0 { intervalSeconds = saved }
-
         do {
             let store = try WordStore()
 
-            // Pierwsze uruchomienie na czystej maszynie - zasiewamy pakietem
-            // startowym. Gdy plik juz istnieje (np. zapisany przez powloke
-            // .NET), nic sie nie dzieje.
+            // Pierwsze uruchomienie na czystej maszynie. Gdy plik juz istnieje
+            // (np. zapisany przez aplikacje .NET), nic sie nie dzieje.
             try store.seedIfEmpty()
 
             manager = WordManager(store: store)
             refresh()
         } catch {
-            statusMessage = "Nie udalo sie wczytac slowek: \(error.localizedDescription)"
+            statusMessage = "Could not load words: \(error.localizedDescription)"
             return
         }
 
@@ -86,7 +86,7 @@ final class AppModel {
         do {
             _ = try manager.grade(id: id, grade: grade)
         } catch {
-            statusMessage = "Nie udalo sie zapisac oceny: \(error.localizedDescription)"
+            statusMessage = "Could not save the grade: \(error.localizedDescription)"
             return
         }
 
@@ -99,16 +99,13 @@ final class AppModel {
         self.grade(id: word.id, as: grade)
     }
 
+    @discardableResult
     func addWord(original: String, translation: String) -> Bool {
-        guard let manager else { return false }
+        guard let manager, (try? manager.addWord(original: original, translation: translation)) != nil
+        else { return false }
 
-        do {
-            _ = try manager.addWord(original: original, translation: translation)
-            refresh()
-            return true
-        } catch {
-            return false
-        }
+        refresh()
+        return true
     }
 
     func remove(id: UUID) {
@@ -118,7 +115,7 @@ final class AppModel {
 
     var dueCount: Int {
         let now = Date()
-        return words.filter { $0.review.dueUtc <= now }.count
+        return words.count { $0.isDue(at: now) }
     }
 
     private func restartTimer() {
@@ -133,15 +130,12 @@ final class AppModel {
     }
 
     private func updateAuthorizationMessage() async {
-        switch await notifications.authorizationStatus() {
-        case .denied:
-            statusMessage = "System blokuje powiadomienia — wlacz je w Ustawieniach → Powiadomienia → Wording."
-        case .authorized, .provisional, .ephemeral:
-            statusMessage = ""
-        case .notDetermined:
-            statusMessage = "Czekam na zgode na powiadomienia."
-        @unknown default:
-            statusMessage = ""
-        }
+        statusMessage =
+            switch await notifications.authorizationStatus() {
+            case .denied:
+                "Notifications are blocked — enable them in Settings → Notifications → Wording."
+            case .notDetermined: "Waiting for notification permission."
+            default: ""
+            }
     }
 }

@@ -8,10 +8,7 @@ public partial class NewWord : Form
 {
     readonly WordManager _manager;
 
-    /// <summary>
-    /// Manager przychodzi z zewnatrz - dialog celowo nie tworzy wlasnego,
-    /// bo wtedy pisalby przez osobna kopie danych w pamieci.
-    /// </summary>
+    /// <summary>Manager przychodzi z zewnatrz, zeby dialog pisal do tego samego magazynu co okno glowne.</summary>
     public NewWord(WordManager manager)
     {
         ArgumentNullException.ThrowIfNull(manager);
@@ -27,15 +24,18 @@ public partial class NewWord : Form
         {
             _manager.AddWord(txtOriginal.Text, txtTranslation.Text);
         }
-        catch (ArgumentException wyjatek)
+        catch (ArgumentException)
         {
-            MessageBox.Show(this, wyjatek.Message, "Wording", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show(
+                this,
+                "Both the word and its translation are required.",
+                "Wording",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning);
             return;
         }
 
-        // Ustawienie DialogResult samo zamyka okno modalne; wolanie Dispose()
-        // w tym miejscu, jak robila poprzednia wersja, niszczylo formularz
-        // jeszcze w trakcie obslugi zdarzenia.
+        // Ustawienie DialogResult samo zamyka okno modalne.
         DialogResult = DialogResult.OK;
     }
 

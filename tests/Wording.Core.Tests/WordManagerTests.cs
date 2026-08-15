@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Time.Testing;
 using Wording.Core;
 using Wording.Core.Learning;
 using Wording.Core.Storage;
@@ -7,151 +6,138 @@ namespace Wording.Core.Tests;
 
 public class WordManagerTests
 {
-    static readonly DateTimeOffset Teraz = new(2026, 8, 14, 12, 0, 0, TimeSpan.Zero);
+    static readonly DateTimeOffset Teraz = Fixtures.Teraz;
 
-    static (WordManager Manager, JsonWordStore Magazyn, FakeTimeProvider Zegar) Zbuduj(TempKatalog katalog)
-    {
-        var zegar = new FakeTimeProvider(Teraz);
-        var magazyn = new JsonWordStore(katalog.PlikJson, zegar);
-
-        return (new WordManager(magazyn, zegar, new Random(1234)), magazyn, zegar);
-    }
+    static WordManager Zbuduj(TempDirectory dir) =>
+        new(new JsonWordStore(dir.JsonFile, Fixtures.Zegar()), Fixtures.Zegar(), new Random(1234));
 
     [Fact]
     public void WspolnyMagazyn_ObaEkranyWidzaTeSameDaneBezOdswiezania()
     {
-        // To jest naprawa bledu przypietego w kroku 1: wczesniej okno glowne
-        // i okienko dodawania mialy osobne repozytoria, wiec nowe slowko
-        // pojawialo sie dopiero po recznym przeladowaniu z dysku.
-        using var katalog = new TempKatalog();
-        var zegar = new FakeTimeProvider(Teraz);
-        var wspolnyMagazyn = new JsonWordStore(katalog.PlikJson, zegar);
+        // Naprawa bledu z wersji sprzed migracji: okno glowne i okienko dodawania
+        // mialy osobne repozytoria, wiec nowe slowko pojawialo sie dopiero po
+        // recznym przeladowaniu z dysku.
+        using var dir = new TempDirectory();
+        var store = new JsonWordStore(dir.JsonFile, Fixtures.Zegar());
 
-        var oknoGlowne = new WordManager(wspolnyMagazyn, zegar);
-        var okienkoDodawania = new WordManager(wspolnyMagazyn, zegar);
+        var mainWindow = new WordManager(store, Fixtures.Zegar());
+        var addDialog = new WordManager(store, Fixtures.Zegar());
 
-        okienkoDodawania.AddWord("nimble", "zwinny");
+        addDialog.AddWord("nimble", "zwinny");
 
-        Assert.Contains(oknoGlowne.GetWords(), w => w.Original == "nimble");
+        Assert.Contains(mainWindow.GetWords(), w => w.Original == "nimble");
     }
 
     [Fact]
     public void AddWord_OdrzucaPusteSlowko()
     {
-        using var katalog = new TempKatalog();
-        var (manager, _, _) = Zbuduj(katalog);
+        using var dir = new TempDirectory();
 
-        Assert.Throws<ArgumentException>(() => manager.AddWord("   ", "zakres"));
+        Assert.Throws<ArgumentException>(() => Zbuduj(dir).AddWord("   ", "zakres"));
     }
 
     [Fact]
     public void AddWord_OdrzucaPusteTlumaczenie()
     {
-        using var katalog = new TempKatalog();
-        var (manager, _, _) = Zbuduj(katalog);
+        using var dir = new TempDirectory();
 
-        Assert.Throws<ArgumentException>(() => manager.AddWord("scope", ""));
+        Assert.Throws<ArgumentException>(() => Zbuduj(dir).AddWord("scope", ""));
     }
 
     [Fact]
     public void AddWord_PrzycinaBialeZnaki()
     {
-        using var katalog = new TempKatalog();
-        var (manager, _, _) = Zbuduj(katalog);
+        using var dir = new TempDirectory();
 
-        var slowo = manager.AddWord("  scope  ", "\tzakres\n");
+        var word = Zbuduj(dir).AddWord("  scope  ", "\tzakres\n");
 
-        Assert.Equal("scope", slowo.Original);
-        Assert.Equal("zakres", slowo.Translation);
+        Assert.Equal("scope", word.Original);
+        Assert.Equal("zakres", word.Translation);
     }
 
     [Fact]
     public void Grade_PrzeliczaTerminIUtrwalaGoNaDysku()
     {
-        using var katalog = new TempKatalog();
-        var (manager, _, _) = Zbuduj(katalog);
-        var slowo = manager.AddWord("scope", "zakres");
+        using var dir = new TempDirectory();
+        var manager = Zbuduj(dir);
+        var word = manager.AddWord("scope", "zakres");
 
-        Assert.True(manager.Grade(slowo.Id, ReviewGrade.Good));
+        Assert.True(manager.Grade(word.Id, ReviewGrade.Good));
 
-        var zDysku = new JsonWordStore(katalog.PlikJson, new FakeTimeProvider(Teraz)).GetById(slowo.Id);
-        Assert.NotNull(zDysku);
-        Assert.Equal(1, zDysku.Review.Repetitions);
-        Assert.Equal(Teraz.AddDays(1), zDysku.Review.DueUtc);
+        var fromDisk = new JsonWordStore(dir.JsonFile, Fixtures.Zegar()).GetById(word.Id);
+        Assert.NotNull(fromDisk);
+        Assert.Equal(1, fromDisk.Review.Repetitions);
+        Assert.Equal(Teraz.AddDays(1), fromDisk.Review.DueUtc);
     }
 
     [Fact]
     public void Grade_NieistniejaceId_ZwracaFalse()
     {
-        using var katalog = new TempKatalog();
-        var (manager, _, _) = Zbuduj(katalog);
+        using var dir = new TempDirectory();
 
-        Assert.False(manager.Grade(Guid.NewGuid(), ReviewGrade.Good));
+        Assert.False(Zbuduj(dir).Grade(Guid.NewGuid(), ReviewGrade.Good));
     }
 
     [Fact]
     public void NextWordToShow_PustaLista_ZwracaNull()
     {
-        using var katalog = new TempKatalog();
-        var (manager, _, _) = Zbuduj(katalog);
+        using var dir = new TempDirectory();
 
-        Assert.Null(manager.NextWordToShow());
+        Assert.Null(Zbuduj(dir).NextWordToShow());
     }
 
     [Fact]
     public void NextWordToShow_ZwracaSlowkoZListy()
     {
-        using var katalog = new TempKatalog();
-        var (manager, _, _) = Zbuduj(katalog);
+        using var dir = new TempDirectory();
+        var manager = Zbuduj(dir);
         manager.AddWord("scope", "zakres");
         manager.AddWord("cater", "zaspokoic");
 
-        var pokazane = manager.NextWordToShow();
+        var shown = manager.NextWordToShow();
 
-        Assert.NotNull(pokazane);
-        Assert.Contains(manager.GetWords(), w => w.Id == pokazane.Id);
+        Assert.NotNull(shown);
+        Assert.Contains(manager.GetWords(), w => w.Id == shown.Id);
     }
 
     [Fact]
     public void OcenioneJakoZnane_PrzestajeDominowacWRotacji()
     {
-        // Sedno calego kroku: to, co oceniamy jako znane, ma sie pokazywac rzadziej.
-        using var katalog = new TempKatalog();
-        var (manager, _, _) = Zbuduj(katalog);
-        var znane = manager.AddWord("znane", "known");
-        var nieznane = manager.AddWord("nieznane", "unknown");
+        // Sedno calego mechanizmu: to, co oceniamy jako znane, ma sie pokazywac rzadziej.
+        using var dir = new TempDirectory();
+        var manager = Zbuduj(dir);
+        var known = manager.AddWord("znane", "known");
+        var unknown = manager.AddWord("nieznane", "unknown");
 
         // Znane przechodzi kilka udanych powtorek, wiec jego termin ucieka w przyszlosc.
         for (var i = 0; i < 3; i++)
         {
-            manager.Grade(znane.Id, ReviewGrade.Good);
+            manager.Grade(known.Id, ReviewGrade.Good);
         }
 
-        var trafieniaNieznanego = 0;
-        const int Prob = 1000;
+        var hits = 0;
+        const int Attempts = 1000;
 
-        for (var i = 0; i < Prob; i++)
+        for (var i = 0; i < Attempts; i++)
         {
-            if (manager.NextWordToShow()!.Id == nieznane.Id)
+            if (manager.NextWordToShow()!.Id == unknown.Id)
             {
-                trafieniaNieznanego++;
+                hits++;
             }
         }
 
-        Assert.True(
-            trafieniaNieznanego > Prob * 0.8,
-            $"nieznane slowko trafilo tylko {trafieniaNieznanego}/{Prob} razy");
+        Assert.True(hits > Attempts * 0.8, $"nieznane slowko trafilo tylko {hits}/{Attempts} razy");
     }
 
     [Fact]
     public void RemoveWord_UsuwaSlowkoIZwracaFalseDlaNieistniejacego()
     {
-        using var katalog = new TempKatalog();
-        var (manager, _, _) = Zbuduj(katalog);
-        var slowo = manager.AddWord("scope", "zakres");
+        using var dir = new TempDirectory();
+        var manager = Zbuduj(dir);
+        var word = manager.AddWord("scope", "zakres");
 
-        Assert.True(manager.RemoveWord(slowo.Id));
+        Assert.True(manager.RemoveWord(word.Id));
         Assert.Empty(manager.GetWords());
-        Assert.False(manager.RemoveWord(slowo.Id));
+        Assert.False(manager.RemoveWord(word.Id));
     }
 }

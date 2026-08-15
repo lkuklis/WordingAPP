@@ -1,5 +1,7 @@
 using System;
 using System.Windows.Forms;
+using Wording.Core;
+using Wording.Core.Storage;
 
 namespace Wording.WordApp;
 
@@ -10,9 +12,13 @@ static class Program
     {
         ApplicationConfiguration.Initialize();
 
-        // Jeden magazyn i jeden manager na caly proces - patrz WordingHost.
-        var host = WordingHost.Create();
+        var settings = WordingSettings.Load();
 
-        Application.Run(new WordingMain(host.Manager, host.Settings));
+        // Jeden magazyn i jeden manager na caly proces - kazdy ekran dostaje
+        // te sama instancje, inaczej pisalyby przez osobne kopie w pamieci.
+        var store = new JsonWordStore(settings.ResolveDataFile());
+        store.ImportLegacyIfEmpty(WordingSettings.FindLegacyXml());
+
+        Application.Run(new WordingMain(new WordManager(store), settings));
     }
 }

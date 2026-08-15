@@ -4,7 +4,7 @@ import Testing
 @testable import WordingKit
 
 @Suite struct SpacedRepetitionSchedulerTests {
-    static let teraz = Date(timeIntervalSince1970: 1_786_000_000)
+    static let teraz = Fixtures.teraz
 
     static func nowe() -> ReviewState { .new(now: teraz) }
 

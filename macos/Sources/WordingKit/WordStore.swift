@@ -1,10 +1,5 @@
 import Foundation
 
-public enum WordingError: Error, Equatable {
-    case emptyOriginal
-    case emptyTranslation
-}
-
 /// Magazyn slowek w pliku JSON.
 ///
 /// Port `Wording.Core.Storage.JsonWordStore`. Zapis jest atomowy (plik
@@ -19,6 +14,7 @@ public final class WordStore {
         try reload()
     }
 
+    /// Wczytuje ponownie z dysku, odrzucajac stan z pamieci.
     public func reload() throws {
         guard FileManager.default.fileExists(atPath: fileURL.path(percentEncoded: false)) else {
             words = []
@@ -39,6 +35,7 @@ public final class WordStore {
         words.first { $0.id == id }
     }
 
+    @discardableResult
     public func add(original: String, translation: String, now: Date) throws -> Word {
         let word = Word(
             original: original,
@@ -64,6 +61,7 @@ public final class WordStore {
         return true
     }
 
+    /// Zapisuje zmiany w slowku juz obecnym w magazynie (np. po ocenie powtorki).
     @discardableResult
     public func update(_ word: Word) throws -> Bool {
         guard let index = words.firstIndex(where: { $0.id == word.id }) else {
@@ -76,7 +74,13 @@ public final class WordStore {
         return true
     }
 
-    func save() throws {
+    /// Dopisuje slowka jednym zapisem - uzywane przy zasiewie pakietu startowego.
+    func append(_ newWords: [Word]) throws {
+        words.append(contentsOf: newWords)
+        try save()
+    }
+
+    private func save() throws {
         let directory = fileURL.deletingLastPathComponent()
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
 

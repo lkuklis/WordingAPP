@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Time.Testing;
 using Wording.Core;
 using Wording.Core.Learning;
 using Wording.Core.Storage;
@@ -7,181 +6,177 @@ namespace Wording.Core.Tests;
 
 public class JsonWordStoreTests
 {
-    static readonly DateTimeOffset Teraz = new(2026, 8, 14, 12, 0, 0, TimeSpan.Zero);
-
-    static FakeTimeProvider Zegar() => new(Teraz);
+    static readonly DateTimeOffset Teraz = Fixtures.Teraz;
 
     [Fact]
     public void BrakPliku_DajePustyMagazyn()
     {
-        using var katalog = new TempKatalog();
+        using var dir = new TempDirectory();
 
-        var magazyn = new JsonWordStore(katalog.PlikJson, Zegar());
-
-        Assert.Empty(magazyn.GetAll());
+        Assert.Empty(new JsonWordStore(dir.JsonFile, Fixtures.Zegar()).GetAll());
     }
 
     [Fact]
     public void Add_ZapisujeNaDyskIWidaToPoPonownymWczytaniu()
     {
-        using var katalog = new TempKatalog();
-        new JsonWordStore(katalog.PlikJson, Zegar()).Add("scope", "zakres");
+        using var dir = new TempDirectory();
+        new JsonWordStore(dir.JsonFile, Fixtures.Zegar()).Add("scope", "zakres");
 
-        var poWczytaniu = new JsonWordStore(katalog.PlikJson, Zegar()).GetAll();
+        var word = Assert.Single(new JsonWordStore(dir.JsonFile, Fixtures.Zegar()).GetAll());
 
-        var slowo = Assert.Single(poWczytaniu);
-        Assert.Equal("scope", slowo.Original);
-        Assert.Equal("zakres", slowo.Translation);
+        Assert.Equal("scope", word.Original);
+        Assert.Equal("zakres", word.Translation);
     }
 
     [Fact]
     public void Add_NadajeUnikalneIdentyfikatory()
     {
-        using var katalog = new TempKatalog();
-        var magazyn = new JsonWordStore(katalog.PlikJson, Zegar());
+        using var dir = new TempDirectory();
+        var store = new JsonWordStore(dir.JsonFile, Fixtures.Zegar());
 
-        var identyfikatory = Enumerable.Range(0, 100)
-            .Select(i => magazyn.Add("slowo" + i, "tlumaczenie" + i).Id)
+        var ids = Enumerable.Range(0, 100)
+            .Select(i => store.Add("slowo" + i, "tlumaczenie" + i).Id)
             .ToHashSet();
 
-        Assert.Equal(100, identyfikatory.Count);
-        Assert.DoesNotContain(Guid.Empty, identyfikatory);
+        Assert.Equal(100, ids.Count);
+        Assert.DoesNotContain(Guid.Empty, ids);
     }
 
     [Fact]
     public void Add_UstawiaSlowkoJakoWymagalneOdRazu()
     {
-        using var katalog = new TempKatalog();
+        using var dir = new TempDirectory();
 
-        var slowo = new JsonWordStore(katalog.PlikJson, Zegar()).Add("scope", "zakres");
+        var word = new JsonWordStore(dir.JsonFile, Fixtures.Zegar()).Add("scope", "zakres");
 
-        Assert.Equal(Teraz, slowo.CreatedUtc);
-        Assert.Equal(Teraz, slowo.Review.DueUtc);
-        Assert.Null(slowo.Review.LastReviewedUtc);
+        Assert.Equal(Teraz, word.CreatedUtc);
+        Assert.True(word.IsDue(Teraz));
+        Assert.True(word.IsNew);
     }
 
     [Fact]
     public void Remove_UsuwaSlowkoTrwale()
     {
-        using var katalog = new TempKatalog();
-        var magazyn = new JsonWordStore(katalog.PlikJson, Zegar());
-        var slowo = magazyn.Add("scope", "zakres");
-        magazyn.Add("cater", "zaspokoic");
+        using var dir = new TempDirectory();
+        var store = new JsonWordStore(dir.JsonFile, Fixtures.Zegar());
+        var word = store.Add("scope", "zakres");
+        store.Add("cater", "zaspokoic");
 
-        Assert.True(magazyn.Remove(slowo.Id));
+        Assert.True(store.Remove(word.Id));
 
-        var pozostale = new JsonWordStore(katalog.PlikJson, Zegar()).GetAll();
-        Assert.Equal("cater", Assert.Single(pozostale).Original);
+        var remaining = new JsonWordStore(dir.JsonFile, Fixtures.Zegar()).GetAll();
+        Assert.Equal("cater", Assert.Single(remaining).Original);
     }
 
     [Fact]
     public void Remove_NieistniejaceId_ZwracaFalse()
     {
-        using var katalog = new TempKatalog();
-        var magazyn = new JsonWordStore(katalog.PlikJson, Zegar());
+        using var dir = new TempDirectory();
 
-        Assert.False(magazyn.Remove(Guid.NewGuid()));
+        Assert.False(new JsonWordStore(dir.JsonFile, Fixtures.Zegar()).Remove(Guid.NewGuid()));
     }
 
     [Fact]
     public void Update_UtrwalaStanPowtorek()
     {
-        using var katalog = new TempKatalog();
-        var magazyn = new JsonWordStore(katalog.PlikJson, Zegar());
-        var slowo = magazyn.Add("scope", "zakres");
+        using var dir = new TempDirectory();
+        var store = new JsonWordStore(dir.JsonFile, Fixtures.Zegar());
+        var word = store.Add("scope", "zakres");
 
-        slowo.Review = SpacedRepetitionScheduler.Apply(slowo.Review, ReviewGrade.Good, Teraz);
-        Assert.True(magazyn.Update(slowo));
+        word.Review = SpacedRepetitionScheduler.Apply(word.Review, ReviewGrade.Good, Teraz);
+        Assert.True(store.Update(word));
 
-        var poWczytaniu = new JsonWordStore(katalog.PlikJson, Zegar()).GetById(slowo.Id);
-        Assert.NotNull(poWczytaniu);
-        Assert.Equal(1, poWczytaniu.Review.Repetitions);
-        Assert.Equal(Teraz.AddDays(1), poWczytaniu.Review.DueUtc);
+        var reloaded = new JsonWordStore(dir.JsonFile, Fixtures.Zegar()).GetById(word.Id);
+        Assert.NotNull(reloaded);
+        Assert.Equal(1, reloaded.Review.Repetitions);
+        Assert.Equal(Teraz.AddDays(1), reloaded.Review.DueUtc);
     }
 
     [Fact]
     public void Zapis_NieZostawiaPlikuTymczasowego()
     {
-        using var katalog = new TempKatalog();
-        new JsonWordStore(katalog.PlikJson, Zegar()).Add("scope", "zakres");
+        using var dir = new TempDirectory();
+        new JsonWordStore(dir.JsonFile, Fixtures.Zegar()).Add("scope", "zakres");
 
-        Assert.Empty(Directory.GetFiles(katalog.Sciezka, "*.tmp"));
+        Assert.Empty(Directory.GetFiles(dir.Path, "*.tmp"));
     }
 
     [Fact]
     public void Reload_OdrzucaStanZPamieciNaRzeczDysku()
     {
-        using var katalog = new TempKatalog();
-        var pierwszy = new JsonWordStore(katalog.PlikJson, Zegar());
-        var drugi = new JsonWordStore(katalog.PlikJson, Zegar());
+        using var dir = new TempDirectory();
+        var first = new JsonWordStore(dir.JsonFile, Fixtures.Zegar());
+        var second = new JsonWordStore(dir.JsonFile, Fixtures.Zegar());
 
-        drugi.Add("nimble", "zwinny");
-        Assert.Empty(pierwszy.GetAll());
+        second.Add("nimble", "zwinny");
+        Assert.Empty(first.GetAll());
 
-        pierwszy.Reload();
+        first.Reload();
 
-        Assert.Single(pierwszy.GetAll());
+        Assert.Single(first.GetAll());
     }
 
     [Fact]
-    public void OpenOrMigrate_PrzenosiSlowkaZeStaregoXml()
+    public void ImportLegacyIfEmpty_PrzenosiSlowkaZeStaregoXml()
     {
-        using var katalog = new TempKatalog();
-        katalog.ZapiszStaryXml(
+        using var dir = new TempDirectory();
+        dir.WriteLegacyXml(
             (1, "scope", "zakres"),
             (2, "cater", "zaspokoic"),
             (5, "efficient", "wydajny"));
 
-        var magazyn = JsonWordStore.OpenOrMigrate(katalog.PlikJson, katalog.PlikXml, Zegar());
+        var store = new JsonWordStore(dir.JsonFile, Fixtures.Zegar());
+        Assert.Equal(3, store.ImportLegacyIfEmpty(dir.XmlFile));
 
-        Assert.Equal(3, magazyn.GetAll().Count);
-        Assert.Contains(magazyn.GetAll(), w => w.Original == "efficient" && w.Translation == "wydajny");
-        Assert.True(File.Exists(katalog.PlikJson), "migracja powinna od razu zapisac plik JSON");
+        Assert.Contains(store.GetAll(), w => w.Original == "efficient" && w.Translation == "wydajny");
+        Assert.True(File.Exists(dir.JsonFile), "import powinien od razu zapisac plik JSON");
     }
 
     [Fact]
-    public void OpenOrMigrate_NadajeNoweGuidyZamiastStarychLiczb()
+    public void ImportLegacyIfEmpty_NadajeNoweGuidyZamiastStarychLiczb()
     {
-        using var katalog = new TempKatalog();
-        katalog.ZapiszStaryXml((1, "scope", "zakres"), (2, "cater", "zaspokoic"));
+        using var dir = new TempDirectory();
+        dir.WriteLegacyXml((1, "scope", "zakres"), (2, "cater", "zaspokoic"));
 
-        var magazyn = JsonWordStore.OpenOrMigrate(katalog.PlikJson, katalog.PlikXml, Zegar());
+        var store = new JsonWordStore(dir.JsonFile, Fixtures.Zegar());
+        store.ImportLegacyIfEmpty(dir.XmlFile);
 
-        var identyfikatory = magazyn.GetAll().Select(w => w.Id).ToHashSet();
-        Assert.Equal(2, identyfikatory.Count);
-        Assert.DoesNotContain(Guid.Empty, identyfikatory);
+        var ids = store.GetAll().Select(w => w.Id).ToHashSet();
+        Assert.Equal(2, ids.Count);
+        Assert.DoesNotContain(Guid.Empty, ids);
     }
 
     [Fact]
-    public void OpenOrMigrate_NieNadpisujeIstniejacegoJson()
+    public void ImportLegacyIfEmpty_NieDotykaMagazynuKtoryJuzCosZawiera()
     {
-        using var katalog = new TempKatalog();
-        new JsonWordStore(katalog.PlikJson, Zegar()).Add("juz-tu-bylo", "istniejace");
-        katalog.ZapiszStaryXml((1, "scope", "zakres"));
+        using var dir = new TempDirectory();
+        var store = new JsonWordStore(dir.JsonFile, Fixtures.Zegar());
+        store.Add("juz-tu-bylo", "istniejace");
+        dir.WriteLegacyXml((1, "scope", "zakres"));
 
-        var magazyn = JsonWordStore.OpenOrMigrate(katalog.PlikJson, katalog.PlikXml, Zegar());
-
-        Assert.Equal("juz-tu-bylo", Assert.Single(magazyn.GetAll()).Original);
+        Assert.Equal(0, store.ImportLegacyIfEmpty(dir.XmlFile));
+        Assert.Equal("juz-tu-bylo", Assert.Single(store.GetAll()).Original);
     }
 
     [Fact]
-    public void OpenOrMigrate_BezStaregoPliku_DajePustyMagazyn()
+    public void ImportLegacyIfEmpty_BezStaregoPliku_NicNieRobi()
     {
-        using var katalog = new TempKatalog();
+        using var dir = new TempDirectory();
+        var store = new JsonWordStore(dir.JsonFile, Fixtures.Zegar());
 
-        var magazyn = JsonWordStore.OpenOrMigrate(katalog.PlikJson, katalog.PlikXml, Zegar());
-
-        Assert.Empty(magazyn.GetAll());
+        Assert.Equal(0, store.ImportLegacyIfEmpty(dir.XmlFile));
+        Assert.Equal(0, store.ImportLegacyIfEmpty(null));
+        Assert.Empty(store.GetAll());
     }
 
     [Fact]
     public void Zapis_TworzyBrakujacyKatalog()
     {
-        using var katalog = new TempKatalog();
-        var zagniezdzony = Path.Combine(katalog.Sciezka, "a", "b", "words.json");
+        using var dir = new TempDirectory();
+        var nested = Path.Combine(dir.Path, "a", "b", "words.json");
 
-        new JsonWordStore(zagniezdzony, Zegar()).Add("scope", "zakres");
+        new JsonWordStore(nested, Fixtures.Zegar()).Add("scope", "zakres");
 
-        Assert.True(File.Exists(zagniezdzony));
+        Assert.True(File.Exists(nested));
     }
 }

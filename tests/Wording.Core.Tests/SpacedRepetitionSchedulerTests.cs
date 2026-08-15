@@ -4,7 +4,7 @@ namespace Wording.Core.Tests;
 
 public class SpacedRepetitionSchedulerTests
 {
-    static readonly DateTimeOffset Teraz = new(2026, 8, 14, 12, 0, 0, TimeSpan.Zero);
+    static readonly DateTimeOffset Teraz = Fixtures.Teraz;
 
     static ReviewState Nowe() => ReviewState.New(Teraz);
 

@@ -1,12 +1,12 @@
 import AppKit
 import UserNotifications
+import WordingKit
 
 /// Odbiera reakcje na powiadomienia. Delegat musi byc ustawiony zanim
 /// poprosimy o zgode, inaczej klikniecia w przyciski nie trafiaja nigdzie.
 final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Kolejnosc ma znaczenie: delegat musi byc na miejscu przed prosba o zgode.
         UNUserNotificationCenter.current().delegate = self
 
         Task { @MainActor in
@@ -31,16 +31,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
         guard
             let raw = userInfo[NotificationService.wordIdKey] as? String,
-            let id = UUID(uuidString: raw)
+            let id = UUID(uuidString: raw),
+            // Klikniecie w samo powiadomienie (bez przycisku) tylko je zamyka.
+            let grade = ReviewGrade(actionIdentifier: response.actionIdentifier)
         else { return }
 
-        // Klikniecie w samo powiadomienie (bez przycisku) tylko je zamyka.
-        guard let action = NotificationAction(rawValue: response.actionIdentifier) else {
-            return
-        }
-
         await MainActor.run {
-            AppModel.shared.grade(id: id, as: action.grade)
+            AppModel.shared.grade(id: id, as: grade)
         }
     }
 }
