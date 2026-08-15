@@ -22,6 +22,41 @@ This is deliberate. Notification APIs are the least abstractable part of the pla
 
 **The two apps write the same `words.json` shape, but they are not expected to share a live file.** A Windows user runs the Windows app, a macOS user runs the macOS one. Keeping the formats identical is insurance for the case that does occur — someone moving machines, or keeping their data directory in a synced folder — and it is cheap now that `macos/Tests/WordingKitTests/InteropTests.swift` pins it. Treat it as a compatibility guarantee worth keeping, not as a requirement that should drive design decisions.
 
+## Every request covers both ports
+
+**Unless the user names a platform, a request applies to `src/` *and* `macos/`.** "Fix the
+interval picker", "add quiet hours", "the grading buttons are wrong" — all of them mean both
+apps, because the user thinks in terms of *Wording*, one product that happens to have two
+implementations. Shipping a fix to one port and calling the task done leaves the other half of
+the product broken, and nothing in the build will complain: the two trees have no shared code
+and no cross-port test, so a one-sided change compiles clean and passes every suite.
+
+The default is symmetry, so it holds even when a change looks platform-flavoured. A macOS
+notification bug usually has a .NET counterpart in the same logic; a WinForms wording fix
+usually needs the same wording in SwiftUI. Analyse both, then either change both or say
+plainly why one does not apply.
+
+Only skip a port when the user scoped the request themselves ("only on Mac", "in the WinForms
+grid"), or when the feature genuinely has no counterpart — the legacy XML importer is .NET-only
+by design, notification action buttons have no `ShowBalloonTip` equivalent. Both are decisions
+worth stating in the reply, not silent omissions.
+
+What this means in practice:
+
+- Change `Learning/`, `Storage/`, or the word model in .NET → make the matching change in
+  `WordingKit`, and vice versa. These are line-for-line ports.
+- Change the starter word list → both `src/Wording.Core/WordsData.xml` and
+  `macos/Sources/WordingKit/Resources/starter-pack.json`.
+- Change persisted JSON → update `WordJsonContext`, the Swift `Codable` types, and
+  `InteropTests`, or the two apps stop reading each other's files.
+- Add a test on one side → add the equivalent on the other, so the counts stay meaningful.
+
+**Verification is asymmetric even when the change is not.** The Swift side can be tested and
+run here; the .NET side can only be compiled and unit-tested from macOS. Report it that way —
+"changed in both, Swift verified by running, WinForms compiles and passes tests but is
+unverified on Windows" — rather than implying both were exercised equally. See *Verification
+lessons worth keeping*.
+
 ## Layout
 
 - `Wording.slnx` — .NET solution in the `.slnx` XML format (the .NET 10 SDK default). `dotnet new sln --format sln` regenerates a classic `.sln` if an older Visual Studio can't open it.
@@ -174,6 +209,6 @@ Two consequences worth remembering:
 
 - **Everything in the repository is English** — identifiers, comments, doc comments, test method names, UI strings, and commit messages. This is a public project; Polish appears only as *data* (the English→Polish starter pack) and in the handful of test assertions that use those words to prove non-ASCII survives a JSON round trip.
 - Keep user-facing wording out of `Wording.Core`/`WordingKit`: they raise typed errors and the UI decides how to phrase them.
-- The two ports are meant to read alike line for line, so keep names and structure symmetric across them.
+- The two ports are meant to read alike line for line, so keep names and structure symmetric across them. A change to one is a change to both unless the user scoped it otherwise — see *Every request covers both ports*.
 - `TreatWarningsAsErrors` is on in `Wording.Core`. Both stacks currently build with zero warnings — keep it that way.
 - `InternalsVisibleTo` exposes `WordSelector.Weight` and its constants to the .NET test project; keep implementation details internal rather than widening the public API for tests.
