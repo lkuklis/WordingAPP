@@ -29,18 +29,26 @@ release.
 
 ## Required secrets
 
-Set these under **Settings → Secrets and variables → Actions**. The workflow runs
-without them, but the macOS build then ships ad-hoc signed and **Gatekeeper will refuse
-to open it** on any machine that downloaded it.
+**All six are already configured** — nothing needs doing for a routine release. This
+section is here for when the certificate expires, a key is rotated, or someone sets the
+project up on another machine.
 
-| Secret | Where it comes from | Status |
-|---|---|---|
-| `MACOS_CERTIFICATE` | base64 of the Developer ID `.p12` | needs the certificate below |
-| `MACOS_CERTIFICATE_PWD` | the password used when building the `.p12` | needs the certificate below |
-| `MACOS_SIGN_IDENTITY` | e.g. `Developer ID Application: Jan Kowalski (AB12CD34EF)` | needs the certificate below |
-| `APPLE_API_KEY` | base64 of the App Store Connect API `.p8` | set |
-| `APPLE_API_KEY_ID` | the key id shown next to the key | set |
-| `APPLE_API_ISSUER` | the issuer id shown above the key list | set |
+Without them the macOS build ships ad-hoc signed and **Gatekeeper refuses to open it**
+on any machine that downloaded it.
+
+| Secret | Where it comes from |
+|---|---|
+| `MACOS_CERTIFICATE` | base64 of the Developer ID `.p12` |
+| `MACOS_CERTIFICATE_PWD` | the password used when building the `.p12` |
+| `MACOS_SIGN_IDENTITY` | `Developer ID Application: Lukasz Kuklis (5JV3LDX8GV)` |
+| `APPLE_API_KEY` | base64 of the App Store Connect API `.p8` |
+| `APPLE_API_KEY_ID` | the key id shown next to the key |
+| `APPLE_API_ISSUER` | the issuer id shown above the key list |
+
+The signing material lives outside the repository, at `~/.appstoreconnect/` on the
+maintainer's machine: the API key under `private_keys/`, plus
+`wording-developerid.key`, `wording-developerid.p12` and the `.p12` password. The
+Developer ID certificate itself expires **2031-08-16**.
 
 Notarisation authenticates with an App Store Connect API key rather than an Apple ID and
 an app-specific password. It is a team credential, it can be revoked on its own, and it
