@@ -175,6 +175,30 @@ public class WordPackImporterTests
     }
 
     [Fact]
+    public void Import_CarriesTheKindIntoTheSetHeader()
+    {
+        // The UI reads it from the header, not from the pack, which is long gone by then.
+        using var dir = new TempDirectory();
+        var pack = Pack(("idempotency", "Doing it twice changes nothing more."));
+        pack.Kind = PackKind.Concepts;
+
+        var result = Importer(dir).Import(pack, Source);
+
+        Assert.Equal(PackKind.Concepts, new JsonWordStore(dir.SetFile("travel-basics")).Set!.Kind);
+        Assert.Equal(PackKind.Concepts, result.Set.Kind);
+    }
+
+    [Fact]
+    public void Import_WithoutAKindRecordsVocabulary()
+    {
+        using var dir = new TempDirectory();
+
+        var result = Importer(dir).Import(Pack(("airport", "aeropuerto")), Source);
+
+        Assert.Equal(PackKind.Vocabulary, result.Set.Kind);
+    }
+
+    [Fact]
     public void Import_WithoutASourceUrlStillWorks()
     {
         // A pack opened from a local file has no address to record.

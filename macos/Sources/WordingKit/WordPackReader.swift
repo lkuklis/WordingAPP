@@ -66,6 +66,7 @@ public enum WordPackReader {
             id: slug,
             name: truncate(name, to: PackLimits.maxNameLength),
             description: description.isEmpty ? nil : description,
+            kind: PackKind.normalize(pack.kind),
             words: entries
         )
     }

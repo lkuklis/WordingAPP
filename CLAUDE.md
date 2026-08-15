@@ -75,8 +75,8 @@ this project's history came from treating a compile as a run.
 - `Wording.slnx` — .NET solution in the `.slnx` XML format (the .NET 10 SDK default). `dotnet new sln --format sln` regenerates a classic `.sln` if an older Visual Studio can't open it.
 - `src/Wording.Core/` — `net10.0`, **deliberately not `-windows`**. All .NET logic: `Learning/` (SM-2, weighted selector), `Storage/` (JSON store, legacy XML importer, paths). Knows nothing about configuration or UI, so it builds and tests on macOS.
 - `src/Wording.WordApp/` — `net10.0-windows` WinForms app, its settings, and the list projection. `Program.Main` is the composition root. `EnableWindowsTargeting` lets it compile on non-Windows hosts.
-- `tests/Wording.Core.Tests/` — xUnit, 144 tests, runs on macOS.
-- `macos/` — SwiftPM package. `WordingKit` (logic port) and `WordingApp` (SwiftUI). 96 tests. No target declares resources, so SwiftPM produces no resource bundle. `build-app.sh` assembles and signs `Wording.app`; `make-dmg.sh` wraps it in a disk image.
+- `tests/Wording.Core.Tests/` — xUnit, 152 tests, runs on macOS.
+- `macos/` — SwiftPM package. `WordingKit` (logic port) and `WordingApp` (SwiftUI). 101 tests. No target declares resources, so SwiftPM produces no resource bundle. `build-app.sh` assembles and signs `Wording.app`; `make-dmg.sh` wraps it in a disk image.
 - `windows/Wording.iss` — Inno Setup script for the Windows installer. Only ever built in CI; it cannot be compiled on macOS.
 - `learning_data/` — published word packs, one JSON each, validated by both test suites.
 - `RELEASING.md` — how a release is cut and which Apple secrets it needs. `LICENSE` — GPL-3.0.

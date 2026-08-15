@@ -11,12 +11,22 @@ public struct WordSet: Codable, Equatable, Sendable {
     /// Where it came from, so the set can be refreshed later.
     public var sourceUrl: String?
 
+    /// Carried over from the pack - see `PackKind`.
+    public var kind: String?
+
     public var importedUtc: Date
 
-    public init(id: String, name: String, sourceUrl: String? = nil, importedUtc: Date) {
+    public init(
+        id: String,
+        name: String,
+        sourceUrl: String? = nil,
+        kind: String? = nil,
+        importedUtc: Date
+    ) {
         self.id = id
         self.name = name
         self.sourceUrl = sourceUrl
+        self.kind = kind
         self.importedUtc = importedUtc
     }
 }
@@ -27,13 +37,22 @@ public struct WordSetInfo: Equatable, Identifiable, Sendable {
     public let id: String
     public let name: String
     public let sourceUrl: String?
+    public let kind: String
     public let wordCount: Int
     public let fileURL: URL
 
-    public init(id: String, name: String, sourceUrl: String?, wordCount: Int, fileURL: URL) {
+    public init(
+        id: String,
+        name: String,
+        sourceUrl: String?,
+        kind: String,
+        wordCount: Int,
+        fileURL: URL
+    ) {
         self.id = id
         self.name = name
         self.sourceUrl = sourceUrl
+        self.kind = kind
         self.wordCount = wordCount
         self.fileURL = fileURL
     }

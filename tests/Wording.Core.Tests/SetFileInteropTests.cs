@@ -32,6 +32,7 @@ public class SetFileInteropTests
         Assert.Contains("\"id\": \"travel-basics\"", json, StringComparison.Ordinal);
         Assert.Contains("\"name\": \"Travel basics\"", json, StringComparison.Ordinal);
         Assert.Contains("\"sourceUrl\"", json, StringComparison.Ordinal);
+        Assert.Contains("\"kind\"", json, StringComparison.Ordinal);
         Assert.Contains("\"importedUtc\"", json, StringComparison.Ordinal);
     }
 

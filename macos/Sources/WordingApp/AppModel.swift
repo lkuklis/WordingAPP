@@ -47,6 +47,19 @@ final class AppModel {
         return sets.first { $0.id == activeSetId }?.name ?? activeSetId
     }
 
+    /// Labels for the two sides. A set of concepts is not a dictionary, and calling its
+    /// definitions "translations" makes the list read as though something is missing.
+    var sideLabels: (front: String, back: String) {
+        guard let activeSetId,
+            let set = sets.first(where: { $0.id == activeSetId }),
+            PackKind.isConcepts(set.kind)
+        else {
+            return ("Word", "Translation")
+        }
+
+        return ("Term", "Definition")
+    }
+
     // Initial values are read in the property initialiser, where didSet does not run
     // yet - otherwise startup would write back to UserDefaults what it had just read
     // and would build the timer three times.

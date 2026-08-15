@@ -66,6 +66,7 @@ public enum WordSetCatalog {
             id: id,
             name: (name?.isEmpty == false) ? name! : id,
             sourceUrl: file.set?.sourceUrl,
+            kind: PackKind.normalize(file.set?.kind),
             wordCount: file.words.count,
             fileURL: fileURL
         )

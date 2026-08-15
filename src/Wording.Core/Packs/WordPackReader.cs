@@ -104,6 +104,7 @@ public static class WordPackReader
         {
             Id = slug,
             Name = Truncate(name, PackLimits.MaxNameLength),
+            Kind = PackKind.Normalize(pack.Kind),
             Description = Truncate(Clean(pack.Description ?? string.Empty), PackLimits.MaxDescriptionLength) is { Length: > 0 } text
                 ? text
                 : null,

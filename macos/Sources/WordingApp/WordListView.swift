@@ -12,15 +12,15 @@ struct WordListView: View {
     var body: some View {
         VStack(spacing: 12) {
             HStack {
-                TextField("Word", text: $original)
-                TextField("Translation", text: $translation)
+                TextField(model.sideLabels.front, text: $original)
+                TextField(model.sideLabels.back, text: $translation)
                 Button("Add", action: add)
                     .disabled(original.trimmed.isEmpty || translation.trimmed.isEmpty)
             }
 
             Table(model.words, selection: $selection) {
-                TableColumn("Word", value: \.original)
-                TableColumn("Translation", value: \.translation)
+                TableColumn(model.sideLabels.front, value: \.original)
+                TableColumn(model.sideLabels.back, value: \.translation)
                 TableColumn("Reviews") { Text("\($0.review.repetitions)") }
                     .width(70)
                 TableColumn("Lapses") { Text("\($0.review.lapses)") }
@@ -31,9 +31,9 @@ struct WordListView: View {
             .overlay {
                 if model.words.isEmpty {
                     ContentUnavailableView(
-                        "No words yet",
+                        "Nothing here yet",
                         systemImage: "character.book.closed",
-                        description: Text("Add your first word above and Wording will start showing it in notifications.")
+                        description: Text("Add your first entry above, or import a pack from a URL, and Wording will start showing it in notifications.")
                     )
                 }
             }

@@ -171,6 +171,28 @@ import Testing
         #expect(!FileManager.default.fileExists(atPath: dir.jsonFile.path(percentEncoded: false)))
     }
 
+    @Test func carriesTheKindIntoTheSetHeader() throws {
+        // The UI reads it from the header, not from the pack, which is long gone by then.
+        let dir = try TempDirectory()
+        var pack = Self.pack(("idempotency", "Doing it twice changes nothing more."))
+        pack.kind = PackKind.concepts
+
+        let result = try WordPackImporter(setsDirectory: dir.setsDirectory)
+            .import(pack, from: Self.source, now: Self.now)
+
+        #expect(try WordStore(fileURL: dir.setFile("travel-basics")).set?.kind == PackKind.concepts)
+        #expect(result.set.kind == PackKind.concepts)
+    }
+
+    @Test func withoutAKindRecordsVocabulary() throws {
+        let dir = try TempDirectory()
+
+        let result = try WordPackImporter(setsDirectory: dir.setsDirectory)
+            .import(Self.pack(("airport", "aeropuerto")), from: Self.source, now: Self.now)
+
+        #expect(result.set.kind == PackKind.vocabulary)
+    }
+
     @Test func withoutASourceUrlStillWorks() throws {
         // A pack opened from a local file has no address to record.
         let dir = try TempDirectory()

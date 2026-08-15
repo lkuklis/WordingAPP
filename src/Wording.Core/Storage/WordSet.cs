@@ -15,6 +15,9 @@ public sealed class WordSet
     /// <summary>Where it came from, so the set can be refreshed later.</summary>
     public string? SourceUrl { get; set; }
 
+    /// <summary>Carried over from the pack - see <see cref="Packs.PackKind"/>.</summary>
+    public string? Kind { get; set; }
+
     public DateTimeOffset ImportedUtc { get; set; }
 }
 
@@ -22,4 +25,10 @@ public sealed class WordSet
 /// One entry in the list of installed sets. The word count is read from the file rather
 /// than stored in it - a stored count starts lying the moment a word is deleted.
 /// </summary>
-public sealed record WordSetInfo(string Id, string Name, string? SourceUrl, int WordCount, string Path);
+public sealed record WordSetInfo(
+    string Id,
+    string Name,
+    string? SourceUrl,
+    string Kind,
+    int WordCount,
+    string Path);

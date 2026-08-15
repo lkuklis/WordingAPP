@@ -32,6 +32,7 @@ have yet — your review progress on the rest is left alone.
 | `id` | Becomes the file name of the imported set. **Lower-case letters, digits and hyphens only**, up to 64 characters, no hyphen at either end. |
 | `name` | What the app shows before the import is confirmed. Up to 80 characters. |
 | `description` | Optional, up to 300 characters. |
+| `kind` | Optional, `"vocabulary"` (the default) or `"concepts"`. Decides whether the app labels the two sides *Word / Translation* or *Term / Definition*. Anything unrecognised reads as vocabulary rather than failing the import. |
 | `words` | Up to 5000 entries, each with a non-empty `original` and `translation` of at most 200 characters. |
 
 The whole file must be under 2 MB and be served over **https**.
@@ -50,7 +51,8 @@ build instead of reaching anyone.
 Keep one language pair per pack and give it a name that says which direction it goes.
 
 A pack does not have to be vocabulary. The two sides are just short texts, so terms and
-their definitions work as well — see [it-interview-concepts.json](it-interview-concepts.json).
+their definitions work as well — set `"kind": "concepts"` and the app labels them
+accordingly. See [it-interview-concepts.json](it-interview-concepts.json).
 
 **[PROMPT.md](PROMPT.md) has a ready prompt for generating one with an AI.** It carries the
 limits above verbatim, so a model that follows it produces a file that imports cleanly;

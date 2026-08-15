@@ -2,6 +2,7 @@
   "id": "it-interview-concepts",
   "name": "Backend interview concepts",
   "description": "Terms that come up in backend and system design interviews, one short answer each.",
+  "kind": "concepts",
   "words": [
     { "original": "idempotency", "translation": "Doing it twice has the same effect as doing it once." },
     { "original": "CAP theorem", "translation": "Under a network partition you keep either consistency or availability, not both." },

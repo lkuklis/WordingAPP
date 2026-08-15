@@ -19,6 +19,12 @@ public sealed class WordPack
 
     public string? Description { get; set; }
 
+    /// <summary>
+    /// "vocabulary" or "concepts" - see <see cref="PackKind"/>. Absent means vocabulary,
+    /// so every pack written before this field existed still reads correctly.
+    /// </summary>
+    public string? Kind { get; set; }
+
     public List<PackEntry> Words { get; set; } = [];
 }
 

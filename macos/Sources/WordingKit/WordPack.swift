@@ -17,12 +17,23 @@ public struct WordPack: Codable, Equatable, Sendable {
 
     public var description: String?
 
+    /// "vocabulary" or "concepts" - see `PackKind`. Absent means vocabulary, so every
+    /// pack written before this field existed still reads correctly.
+    public var kind: String?
+
     public var words: [PackEntry]
 
-    public init(id: String, name: String, description: String? = nil, words: [PackEntry]) {
+    public init(
+        id: String,
+        name: String,
+        description: String? = nil,
+        kind: String? = nil,
+        words: [PackEntry]
+    ) {
         self.id = id
         self.name = name
         self.description = description
+        self.kind = kind
         self.words = words
     }
 }

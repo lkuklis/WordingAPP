@@ -137,6 +137,7 @@ import Testing
             "id": "travel-basics",
             "name": "Travel basics",
             "sourceUrl": "https://example.com/travel-basics.json",
+            "kind": "vocabulary",
             "importedUtc": "2026-08-15T09:31:02.117433+00:00"
           },
           "words": [
@@ -164,6 +165,7 @@ import Testing
         #expect(set.id == "travel-basics")
         #expect(set.name == "Travel basics")
         #expect(set.sourceUrl == "https://example.com/travel-basics.json")
+        #expect(set.kind == PackKind.vocabulary)
         #expect(file.words.count == 1)
     }
 

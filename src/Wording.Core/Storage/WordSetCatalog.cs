@@ -95,6 +95,7 @@ public static class WordSetCatalog
             Id: id,
             Name: string.IsNullOrWhiteSpace(file.Set?.Name) ? id : file.Set.Name,
             SourceUrl: file.Set?.SourceUrl,
+            Kind: Packs.PackKind.Normalize(file.Set?.Kind),
             WordCount: file.Words.Count,
             Path: path);
     }

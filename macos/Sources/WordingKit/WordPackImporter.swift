@@ -59,6 +59,7 @@ public struct WordPackImporter {
                 id: pack.id,
                 name: pack.name,
                 sourceUrl: source?.absoluteString,
+                kind: PackKind.normalize(pack.kind),
                 importedUtc: now
             )
         )

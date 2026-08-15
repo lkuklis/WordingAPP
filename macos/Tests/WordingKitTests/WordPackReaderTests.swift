@@ -120,6 +120,33 @@ import Testing
         #expect(word.translation == "tabbed")
     }
 
+    @Test func defaultsToVocabularyWhenNoKindIsDeclared() throws {
+        // Every pack written before the field existed has to keep working.
+        #expect(try WordPackReader.read(Self.data(Self.valid)).kind == PackKind.vocabulary)
+    }
+
+    @Test(arguments: [
+        ("concepts", PackKind.concepts),
+        ("CONCEPTS", PackKind.concepts),
+        (" concepts ", PackKind.concepts),
+        ("vocabulary", PackKind.vocabulary),
+    ])
+    func understandsTheDeclaredKind(declared: String, expected: String) throws {
+        let json = Self.valid.replacingOccurrences(
+            of: "\"words\":", with: "\"kind\": \"\(declared)\", \"words\":")
+
+        #expect(try WordPackReader.read(Self.data(json)).kind == expected)
+    }
+
+    @Test func treatsAnUnknownKindAsVocabularyRatherThanRefusingThePack() throws {
+        // A pack from a newer version naming some third kind is still perfectly usable;
+        // only its labels would be wrong.
+        let json = Self.valid.replacingOccurrences(
+            of: "\"words\":", with: "\"kind\": \"grammar-drills\", \"words\":")
+
+        #expect(try WordPackReader.read(Self.data(json)).kind == PackKind.vocabulary)
+    }
+
     @Test func truncatesTheNameRatherThanRefusingThePack() throws {
         // Display-only, and the reader cannot expect the user to fix someone else's file.
         let json = Self.valid.replacingOccurrences(

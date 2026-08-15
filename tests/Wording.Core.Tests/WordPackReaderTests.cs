@@ -148,6 +148,35 @@ public class WordPackReaderTests
         Assert.Equal(PackLimits.MaxNameLength, WordPackReader.Read(Bytes(json)).Name.Length);
     }
 
+    [Fact]
+    public void Read_DefaultsToVocabularyWhenNoKindIsDeclared()
+    {
+        // Every pack written before the field existed has to keep working.
+        Assert.Equal(PackKind.Vocabulary, WordPackReader.Read(Bytes(Valid)).Kind);
+    }
+
+    [Theory]
+    [InlineData("concepts", PackKind.Concepts)]
+    [InlineData("CONCEPTS", PackKind.Concepts)]
+    [InlineData(" concepts ", PackKind.Concepts)]
+    [InlineData("vocabulary", PackKind.Vocabulary)]
+    public void Read_UnderstandsTheDeclaredKind(string declared, string expected)
+    {
+        var json = Valid.Replace("\"words\":", $"\"kind\": \"{declared}\", \"words\":", StringComparison.Ordinal);
+
+        Assert.Equal(expected, WordPackReader.Read(Bytes(json)).Kind);
+    }
+
+    [Fact]
+    public void Read_TreatsAnUnknownKindAsVocabularyRatherThanRefusingThePack()
+    {
+        // A pack from a newer version naming some third kind is still perfectly usable;
+        // only its labels would be wrong.
+        var json = Valid.Replace("\"words\":", "\"kind\": \"grammar-drills\", \"words\":", StringComparison.Ordinal);
+
+        Assert.Equal(PackKind.Vocabulary, WordPackReader.Read(Bytes(json)).Kind);
+    }
+
     static PackProblem Problem(string json) =>
         Assert.Throws<WordPackException>(() => WordPackReader.Read(Bytes(json))).Problem;
 }

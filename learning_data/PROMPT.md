@@ -28,6 +28,7 @@ Produce exactly one JSON document in this shape, with these key names:
   "id": "spanish-travel",
   "name": "English → Spanish, travel",
   "description": "Words you need in an airport, a station and a hotel.",
+  "kind": "vocabulary",
   "words": [
     { "original": "airport", "translation": "aeropuerto" }
   ]
@@ -41,7 +42,8 @@ before you answer.
    — Windows reserves those as file names and the pack has to work on both platforms.
 2. "name": not empty, at most 80 characters. Say the direction, for example
    "English → Spanish, travel".
-3. "description": optional, at most 300 characters.
+3. "description": optional, at most 300 characters. "kind": optional, "vocabulary" or
+   "concepts"; anything else is read as vocabulary.
 4. "words": between 1 and 5000 entries. Every "original" and "translation" must be
    non-empty and at most 200 characters after trimming.
 5. No tabs and no line breaks inside any value.
@@ -75,12 +77,12 @@ pair of short texts, so the same file works for terms and their definitions — 
 preparation, a certification syllabus, anything you would otherwise put on flashcards. See
 [it-interview-concepts.json](it-interview-concepts.json).
 
-The app labels the columns *Word* and *Translation* either way, which reads a little oddly
-for concepts. That is the only thing you give up.
-
 Use the prompt above with these changes:
 
 ````text
+Add "kind": "concepts" next to "description". The app then labels the two sides Term and
+Definition instead of Word and Translation.
+
 Instead of a translation, "translation" holds a short answer or definition for the term in
 "original".
 

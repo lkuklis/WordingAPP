@@ -3,6 +3,7 @@ using System.Linq;
 using System.Windows.Forms;
 using Wording.Core;
 using Wording.Core.Learning;
+using Wording.Core.Packs;
 using Wording.Core.Storage;
 using Wording.WordApp.Properties;
 
@@ -144,6 +145,19 @@ public partial class WordingMain : Form
         _setsMenu.DropDownItems.Add(new ToolStripMenuItem("Import from a URL…", null, (_, _) => ImportFromUrl()));
     }
 
+    /// <summary>Labels for the two sides, following the kind of the active set.</summary>
+    (string Front, string Back) SideLabels()
+    {
+        if (_state.ActiveSetId is not { } id)
+        {
+            return ("Word", "Translation");
+        }
+
+        var set = WordSetCatalog.List().FirstOrDefault(candidate => candidate.Id == id);
+
+        return PackKind.IsConcepts(set?.Kind) ? ("Term", "Definition") : ("Word", "Translation");
+    }
+
     string ActiveSetName()
     {
         if (_state.ActiveSetId is not { } id)
@@ -233,6 +247,20 @@ public partial class WordingMain : Form
         if (dataGridWords.Columns[nameof(WordRow.NextReview)] is { } dueColumn)
         {
             dueColumn.HeaderText = "Next review";
+        }
+
+        // A set of concepts is not a dictionary, and calling its definitions
+        // "translations" makes the grid read as though something is missing.
+        var (front, back) = SideLabels();
+
+        if (dataGridWords.Columns[nameof(WordRow.Word)] is { } frontColumn)
+        {
+            frontColumn.HeaderText = front;
+        }
+
+        if (dataGridWords.Columns[nameof(WordRow.Translation)] is { } backColumn)
+        {
+            backColumn.HeaderText = back;
         }
 
         dataGridWords.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.DisplayedCellsExceptHeaders;
