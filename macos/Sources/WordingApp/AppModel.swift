@@ -2,6 +2,18 @@ import Foundation
 import Observation
 import WordingKit
 
+/// A row in the sets sidebar. The empty identifier is the user's own words, which are not
+/// an imported set and so have no entry in the catalogue.
+struct SetChoice: Identifiable, Equatable {
+    let id: String
+    let name: String
+    let count: Int?
+    let kind: String?
+
+    var isOwnWords: Bool { id.isEmpty }
+    var setId: String? { id.isEmpty ? nil : id }
+}
+
 @MainActor
 @Observable
 final class AppModel {
@@ -45,6 +57,32 @@ final class AppModel {
         guard let activeSetId else { return "My words" }
 
         return sets.first { $0.id == activeSetId }?.name ?? activeSetId
+    }
+
+    /// Everything the user can be learning from, the built-in one first. The sidebar is
+    /// built from this rather than from `sets`, so "My words" is a row like any other.
+    var choices: [SetChoice] {
+        [SetChoice(id: "", name: "My words", count: activeSetId == nil ? words.count : nil, kind: nil)]
+            + sets.map { SetChoice(id: $0.id, name: $0.name, count: $0.wordCount, kind: $0.kind) }
+    }
+
+    /// Removes an imported set, keeping the file. Falls back to the user's own words when
+    /// the set being removed is the one open.
+    func remove(setId: String) {
+        do {
+            if let backup = try WordSetCatalog.remove(setId) {
+                statusMessage = "Moved to \(backup.path(percentEncoded: false))"
+            }
+        } catch {
+            statusMessage = "Could not remove the set: \(error.localizedDescription)"
+            return
+        }
+
+        if activeSetId == setId {
+            switchTo(setId: nil)
+        } else {
+            refresh()
+        }
     }
 
     /// Labels for the two sides. A set of concepts is not a dictionary, and calling its
@@ -252,6 +290,11 @@ final class AppModel {
         let result = try importer.import(pack, from: url, replaceExisting: replaceExisting)
 
         refresh()
+
+        // Downloading a set is asking to learn from it. Leaving it to be found in a menu
+        // afterwards is the step people were missing.
+        switchTo(setId: result.set.id)
+
         return result
     }
 

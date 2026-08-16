@@ -47,6 +47,51 @@ public enum WordSetCatalog {
             .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 
+    /// Removes an imported set by moving its file into the backups directory.
+    ///
+    /// Moved rather than deleted: the file carries review progress that took time to
+    /// build and that nothing can reconstruct. Same reasoning, and the same directory, as
+    /// clearing every word from a store.
+    ///
+    /// - Returns: where the file went, or nil when there was no such set.
+    @discardableResult
+    public static func remove(
+        _ id: String,
+        in setsDirectory: URL? = nil,
+        now: Date = Date()
+    ) throws -> URL? {
+        guard let slug = PackSlug.normalize(id) else { return nil }
+
+        let directory = setsDirectory ?? WordingPaths.setsDirectory()
+        let fileURL = WordingPaths.setFile(slug, in: directory)
+
+        guard FileManager.default.fileExists(atPath: fileURL.path(percentEncoded: false)) else {
+            return nil
+        }
+
+        let stamp = DateFormatter()
+        stamp.dateFormat = "yyyyMMdd-HHmmss"
+        stamp.timeZone = TimeZone(identifier: "UTC")
+        stamp.locale = Locale(identifier: "en_US_POSIX")
+
+        let backup = directory
+            .appending(path: WordingPaths.backupsFolderName, directoryHint: .isDirectory)
+            .appending(path: "\(slug)-\(stamp.string(from: now)).json", directoryHint: .notDirectory)
+
+        try FileManager.default.createDirectory(
+            at: backup.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+
+        if FileManager.default.fileExists(atPath: backup.path(percentEncoded: false)) {
+            try FileManager.default.removeItem(at: backup)
+        }
+
+        try FileManager.default.moveItem(at: fileURL, to: backup)
+
+        return backup
+    }
+
     /// Reads one set, or nil when the file cannot be understood. A damaged file is left
     /// out of the list rather than taking the whole list down with it.
     public static func read(_ fileURL: URL) -> WordSetInfo? {

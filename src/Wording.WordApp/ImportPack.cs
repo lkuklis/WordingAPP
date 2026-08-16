@@ -30,6 +30,13 @@ public partial class ImportPack : Form
     /// <summary>True once something was imported, so the caller can refresh its menu.</summary>
     public bool ImportedAnything { get; private set; }
 
+    /// <summary>
+    /// The set imported last. Downloading a set is asking to learn from it, so the main
+    /// window switches to it when this dialog closes rather than leaving it to be found
+    /// in a menu.
+    /// </summary>
+    public string? ImportedSetId { get; private set; }
+
     public ImportPack()
     {
         InitializeComponent();
@@ -223,6 +230,7 @@ public partial class ImportPack : Form
             var result = _importer.Import(pack, source, replaceExisting);
 
             ImportedAnything = true;
+            ImportedSetId = result.Set.Id;
 
             Report(result.Added == 0
                 ? $"Nothing new to add - you already have every entry in {result.Set.Name}."

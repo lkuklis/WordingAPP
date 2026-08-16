@@ -37,6 +37,13 @@ public partial class WordingMain : Form
     /// <summary>The word shown last - the tray menu grades apply to it.</summary>
     Word? _lastShown;
 
+    /// <summary>How long a notification is assumed to be up when nothing says otherwise.</summary>
+    static readonly TimeSpan NotificationDeadline = TimeSpan.FromSeconds(20);
+
+    bool _notificationOpen;
+    DateTimeOffset _shownAtUtc;
+    bool _fillingSets;
+
     public WordingMain(WordManager manager, WordingSettings settings, WordingState state)
     {
         ArgumentNullException.ThrowIfNull(manager);
@@ -62,7 +69,12 @@ public partial class WordingMain : Form
             ContextMenuStrip = BuildTrayMenu(),
         };
         _notifyIcon.MouseClick += NotifyIconMouseClick;
-        _notifyIcon.BalloonTipClicked += (_, _) => ShowWindow();
+        _notifyIcon.BalloonTipClosed += (_, _) => _notificationOpen = false;
+        _notifyIcon.BalloonTipClicked += (_, _) =>
+        {
+            _notificationOpen = false;
+            ShowWindow();
+        };
 
         _timer = new System.Windows.Forms.Timer { Interval = settings.ChangeTimeSeconds * 1000 };
         _timer.Tick += ShowWordTick;
@@ -77,6 +89,7 @@ public partial class WordingMain : Form
         };
 
         RefreshGrid();
+        RefreshSets();
 
         // With no words the timer has nothing to show, so this is the only notification
         // a new user would ever get - it is what tells them the app is alive.
@@ -172,6 +185,7 @@ public partial class WordingMain : Form
     {
         if (setId == _state.ActiveSetId)
         {
+            RefreshSets();
             return;
         }
 
@@ -185,6 +199,7 @@ public partial class WordingMain : Form
         _lastShown = null;
 
         RefreshGrid();
+        RefreshSets();
     }
 
     void ImportFromUrl()
@@ -192,10 +207,108 @@ public partial class WordingMain : Form
         using var dialog = new ImportPack();
         dialog.ShowDialog(this);
 
-        if (dialog.ImportedAnything)
+        if (dialog.ImportedSetId is { } imported)
         {
-            RebuildSetsMenu();
+            SwitchTo(imported);
         }
+        else if (dialog.ImportedAnything)
+        {
+            RefreshSets();
+        }
+    }
+
+    void btnImportSet_Click(object sender, EventArgs e) => ImportFromUrl();
+
+    /// <summary>
+    /// Fills the sets list. The user's own words are the first row: from here they are a
+    /// choice like any other, which is what the tray menu never made clear.
+    /// </summary>
+    void RefreshSets()
+    {
+        // SelectedIndexChanged fires while the list is being filled, and acting on it
+        // would switch sets underneath the user.
+        _fillingSets = true;
+
+        try
+        {
+            listSets.BeginUpdate();
+            listSets.Items.Clear();
+
+            if (listSets.Columns.Count == 0)
+            {
+                listSets.Columns.Add("Learning set", 130);
+                listSets.Columns.Add("", 70);
+            }
+
+            var own = new ListViewItem("My words") { Tag = string.Empty };
+            own.SubItems.Add($"{_manager.GetWords().Count}");
+            listSets.Items.Add(own);
+
+            foreach (var set in WordSetCatalog.List())
+            {
+                var row = new ListViewItem(set.Name) { Tag = set.Id };
+                row.SubItems.Add($"{set.WordCount}");
+                row.ToolTipText = set.SourceUrl;
+
+                listSets.Items.Add(row);
+            }
+
+            var activeId = _state.ActiveSetId ?? string.Empty;
+
+            foreach (ListViewItem row in listSets.Items)
+            {
+                row.Selected = (string?)row.Tag == activeId;
+            }
+
+            listSets.EndUpdate();
+        }
+        finally
+        {
+            _fillingSets = false;
+        }
+
+        btnRemoveSet.Enabled = _state.ActiveSetId is not null;
+    }
+
+    void listSets_SelectedIndexChanged(object sender, EventArgs e)
+    {
+        if (_fillingSets || listSets.SelectedItems.Count == 0)
+        {
+            return;
+        }
+
+        var chosen = (string?)listSets.SelectedItems[0].Tag;
+
+        SwitchTo(string.IsNullOrEmpty(chosen) ? null : chosen);
+    }
+
+    void btnRemoveSet_Click(object sender, EventArgs e)
+    {
+        if (_state.ActiveSetId is not { } id)
+        {
+            return;
+        }
+
+        var name = ActiveSetName();
+
+        var answer = MessageBox.Show(
+            this,
+            $"Remove {name}?\n\nThe file is moved to the backups folder rather than deleted, "
+                + "so the review progress in it can still be recovered by hand.",
+            "Wording",
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Warning,
+            MessageBoxDefaultButton.Button2);
+
+        if (answer != DialogResult.Yes)
+        {
+            return;
+        }
+
+        WordSetCatalog.Remove(id);
+
+        // The set that was open has gone, so fall back to the user's own words.
+        SwitchTo(null);
     }
 
     void UpdateGradeItems()
@@ -292,6 +405,15 @@ public partial class WordingMain : Form
 
     void ShowWordTick(object? sender, EventArgs e)
     {
+        // Never post over a notification that is still up. Windows 10+ turns a balloon
+        // into a toast, ignores the timeout we ask for, and queues whatever it cannot
+        // show yet - so posting on a fixed beat builds a backlog that kept appearing
+        // minutes after the app had been closed.
+        if (NotificationStillShowing())
+        {
+            return;
+        }
+
         var word = _manager.NextWordToShow();
 
         if (word is null)
@@ -300,7 +422,35 @@ public partial class WordingMain : Form
         }
 
         _lastShown = word;
+        _shownAtUtc = DateTimeOffset.UtcNow;
+        _notificationOpen = true;
+
         _notifyIcon.ShowBalloonTip(_showTimeMs, word.Original, word.Translation, ToolTipIcon.Info);
+    }
+
+    /// <summary>
+    /// Whether the last notification is still on screen.
+    /// <para>
+    /// The close event is the real signal, but it is not guaranteed to arrive once the
+    /// shell has turned the balloon into a toast. The deadline is the safety net: if it
+    /// never fires, this decays back to posting on the timer rather than falling silent,
+    /// which is the failure worth avoiding.
+    /// </para>
+    /// </summary>
+    bool NotificationStillShowing()
+    {
+        if (!_notificationOpen)
+        {
+            return false;
+        }
+
+        if (DateTimeOffset.UtcNow - _shownAtUtc > NotificationDeadline)
+        {
+            _notificationOpen = false;
+            return false;
+        }
+
+        return true;
     }
 
     void btnAddNewWord_Click(object sender, EventArgs e)

@@ -65,6 +65,44 @@ public static class WordSetCatalog
     }
 
     /// <summary>
+    /// Removes an imported set by moving its file into the backups directory.
+    /// <para>
+    /// Moved rather than deleted: the file carries review progress that took time to
+    /// build and that nothing can reconstruct. Same reasoning, and the same directory, as
+    /// clearing every word from a store.
+    /// </para>
+    /// </summary>
+    /// <returns>Where the file went, or null when there was no such set.</returns>
+    public static string? Remove(string id, string? setsDirectory = null, TimeProvider? clock = null)
+    {
+        if (!Packs.PackSlug.TryNormalize(id, out var slug))
+        {
+            return null;
+        }
+
+        var directory = setsDirectory ?? WordingPaths.SetsDirectory();
+        var path = WordingPaths.SetFile(slug, directory);
+
+        if (!File.Exists(path))
+        {
+            return null;
+        }
+
+        var stamp = (clock ?? TimeProvider.System).GetUtcNow()
+            .ToString("yyyyMMdd-HHmmss", System.Globalization.CultureInfo.InvariantCulture);
+
+        var backup = System.IO.Path.Combine(
+            directory,
+            WordingPaths.BackupsFolderName,
+            $"{slug}-{stamp}.json");
+
+        Directory.CreateDirectory(System.IO.Path.GetDirectoryName(backup)!);
+        File.Move(path, backup, overwrite: true);
+
+        return backup;
+    }
+
+    /// <summary>
     /// Reads one set, or null when the file cannot be understood. A damaged file is
     /// left out of the list rather than taking the whole list down with it.
     /// </summary>

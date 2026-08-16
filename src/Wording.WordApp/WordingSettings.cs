@@ -11,8 +11,16 @@ public sealed class WordingSettings
 {
     public const string SectionName = "wording";
 
-    /// <summary>How many seconds between words.</summary>
-    public int ChangeTimeSeconds { get; set; } = 5;
+    /// <summary>
+    /// How many seconds between words. Matches the macOS default.
+    /// <para>
+    /// This used to be 5, which was a value for watching the thing work, not for using
+    /// it: Windows keeps a toast up for several seconds and queues the rest, so a word
+    /// every five seconds built a backlog that went on appearing minutes after the app
+    /// had been closed.
+    /// </para>
+    /// </summary>
+    public int ChangeTimeSeconds { get; set; } = 30;
 
     /// <summary>How long the notification should stay visible.</summary>
     public int ShowTimeSeconds { get; set; } = 6;
