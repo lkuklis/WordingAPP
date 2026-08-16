@@ -161,11 +161,17 @@ jobs:
 
           # --wait blocks until Apple returns a verdict, so a rejection fails the build
           # instead of quietly publishing something Gatekeeper will reject.
+          #
+          # --timeout because --wait on its own has no upper bound: a notarisation once
+          # sat in Apple's queue for over an hour, and the job would have held a runner
+          # until the six-hour limit before failing. Failing in twenty minutes turns an
+          # Apple-side stall into something a re-run fixes.
           xcrun notarytool submit "$DMG" \
             --key "$KEY_FILE" \
             --key-id "$APPLE_API_KEY_ID" \
             --issuer "$APPLE_API_ISSUER" \
-            --wait
+            --wait \
+            --timeout 20m
 
           rm -f "$KEY_FILE"
 
